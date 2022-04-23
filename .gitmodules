@@ -1,0 +1,8 @@
+[submodule "libsm64"]
+	path = libsm64
+	url = https://github.com/ckosmic/libsm64
+	branch = gmod
+[submodule "libsm64-gmod"]
+	path = libsm64-gmod
+	url = https://github.com/ckosmic/libsm64-gmod
+	branch = master

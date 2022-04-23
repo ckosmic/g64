@@ -1,0 +1,788 @@
+AddCSLuaFile()
+
+DEFINE_BASECLASS("base_anim")
+
+include("g64/g64_types.lua")
+include("g64/g64_config.lua")
+
+ENT.Type = "anim"
+ENT.Base = "base_entity"
+
+ENT.PrintName = "Mario"
+ENT.Author = "ckosmic"
+ENT.Spawnable = true
+ENT.AdminSpawnable = true
+ENT.Category = "ckosmic"
+
+ENT.MarioId = -10
+ENT.Mins = Vector(-20, -20, -20)
+ENT.Maxs = Vector( 20,  20,  20)
+
+function ENT:SpawnFunction(ply, tr, ClassName)
+	if(!tr.Hit) then return end
+	
+	local SpawnPos = tr.HitPos + tr.HitNormal * 16
+	
+	local ent = ents.Create(ClassName)
+	ent:SetOwner(ply)
+	ent:SetPos(SpawnPos)
+	ent:Spawn()
+	ent:Activate()
+	
+	return ent
+end
+
+function ENT:Initialize()
+	self:DrawShadow(true)
+	self:SetRenderMode(RENDERMODE_NORMAL)
+	self:AddEFlags(EFL_DIRTY_ABSTRANSFORM)
+	
+	self.Owner = self:GetOwner()
+	self.Owner.IsMario = true
+	
+	if (CLIENT) then
+		if(libsm64 != nil && libsm64.ModuleLoaded) then
+			if(libsm64.IsGlobalInit() == false) then
+				local textureData = libsm64.GlobalInit()
+				self:CreateMarioTexture(textureData)
+			end
+			
+			g64config.Load()
+			
+			if(self.Owner == LocalPlayer()) then
+			-- Only runs on the player who spawned Mario
+				net.Start("G64_PLAYERREADY")
+				net.SendToServer()
+			
+				self:StartLocalMario()
+			else
+			-- Runs on everyone else
+				self:StartRemoteMario()
+			end
+			
+			self.Owner:SetNoDraw(true)
+			--collectgarbage("setstepmul", 200)
+			collectgarbage("setpause", 1000)
+		end
+	else
+		self:SetModel("models/hunter/misc/sphere075x075.mdl") -- Easiest circle shadow ever
+		self:SetMaxHealth(1000000)
+	end
+	
+	self:SetAngles(Angle())
+	
+	net.Receive("G64_PLAYERREADY", function(len, ply)
+		ply.MarioEnt = self
+		-- Only gets run on the player who spawned Mario
+		if(ply == self.Owner) then
+			drive.PlayerStartDriving(ply, self, "G64_DRIVE")
+			ply:SetObserverMode(OBS_MODE_CHASE)
+			
+			self:ServerSideMario()
+		end
+	end)
+end
+
+function ENT:OnRemove()
+	if (CLIENT) then
+		if(libsm64 != nil && libsm64.ModuleLoaded) then
+			libsm64.MarioDelete(self.MarioId)
+			self:RemoveMarioHooks()
+			self.MarioId = -10
+			if(self.Owner != nil && IsValid(self.Owner)) then -- Is null if local player disconnects
+				self.Owner:SetNoDraw(false)
+			end
+		end
+		collectgarbage("collect")
+	else
+		hook.Remove("PlayerTick", "G64_PLAYER_TICK")
+		self.Owner.IsMario = false
+		self.Owner:SetObserverMode(OBS_MODE_NONE)
+		drive.PlayerStopDriving(self.Owner)
+	end
+end
+
+function ENT:OnReloaded()
+	self:Remove()
+end
+
+
+
+local tickRate = 1/33
+
+if (CLIENT) then
+
+	local marioRT = GetRenderTargetEx("Mario_Texture", 1024, 64, RT_SIZE_OFFSCREEN, MATERIAL_RT_DEPTH_NONE, 0, 0, IMAGE_FORMAT_RGBA8888)
+	local marioMat = CreateMaterial("g64/libsm64_mario_lighting", "VertexLitGeneric", {
+		["$model"] = "1",
+		["$basetexture"] = "vgui/white"
+	})
+	local vertMat = CreateMaterial("g64/libsm64_mario_verts", "UnlitGeneric", {
+		["$model"] = "1",
+		["$basetexture"] = "vgui/white",
+		["$vertexcolor"] = "1"
+	})
+	local texMat = CreateMaterial("g64/libsm64_mario_tex", "VertexLitGeneric", {
+		["$model"] = "1",
+		["$translucent"] = "1",
+		["$decal"] = "1"
+	})
+	local debugMat = CreateMaterial("g64/libsm64_debug", "UnlitGeneric", {
+		["$model"] = "1",
+		["$basetexture"] = "vgui/white",
+		["$decal"] = "1",
+		["$vertexcolor"] = "1"
+	})
+
+	function ENT:CreateMarioTexture(textureData)
+		local TEX_WIDTH = 1024
+		local TEX_HEIGHT = 64
+		local CONTENT_WIDTH = 704
+		local oldW = ScrW()
+		local oldH = ScrH()
+		texMat:SetTexture("$basetexture", marioRT)
+		
+		local oldRT = render.GetRenderTarget()
+		
+		render.SetRenderTarget(marioRT)
+		render.SetViewPort(0, 0, TEX_WIDTH, TEX_HEIGHT)
+		render.Clear(0, 0, 0, 0)
+		cam.Start2D()
+			for i = 1, #textureData do
+				surface.SetDrawColor(textureData[i][1], textureData[i][2], textureData[i][3], textureData[i][4])
+				surface.DrawRect(i%CONTENT_WIDTH, math.floor(i/CONTENT_WIDTH), 1, 1)
+			end
+		cam.End2D()
+		render.SetRenderTarget(oldRT)
+		render.SetViewPort(0, 0, oldW, oldH)
+	end
+
+	function ENT:RemoveMarioHooks()
+		hook.Remove("PostDrawOpaqueRenderables", "G64_RENDER_OPAQUES" .. self.MarioId)
+		--hook.Remove("PostDrawOpaqueRenderables", "SM64_RENDER_MARIO" .. self.MarioId)
+		hook.Remove("CreateMove", "G64_CREATEMOVE" .. self.MarioId)
+		hook.Remove("CalcView", "G64_CALCVIEW" .. self.MarioId)
+		if(systimetimers.Exists("G64_MARIO_TICK" .. self.MarioId)) then
+			systimetimers.Remove("G64_MARIO_TICK" .. self.MarioId)
+		end
+	end
+
+	local xDelta = 0
+	local yDelta = 0
+	local worldMin = Vector()
+	local worldMax = Vector()
+	local xOffset = worldMin.x + 16384
+	local yOffset = worldMin.y + 16384
+	local xChunks = 0
+	local yChunks = 0
+	local xDispChunks = 0
+	local yDispChunks = 0
+	local marioChunk = Vector()
+	local marioDispChunk = Vector()
+	local prevMarioChunk = Vector()
+	local prevMarioDispChunk = Vector()
+	local scaleFactor = 1
+	local prevWaterLevel = 0
+	local upOffset = Vector(0,0,5)
+
+	local attackTimer = 0
+
+	local vertexBuffers = {}
+	local stateBuffers = {}
+
+	local inputs = {}
+	inputs[1] = Vector()
+	inputs[2] = false
+	inputs[3] = false
+	inputs[4] = false
+
+	local fixedTime = 0
+
+	local function PointInChunk(point)
+		local chunk = Vector()
+		chunk.x = math.min(math.floor((point.x - xOffset + 16384) / xDelta * xChunks) + 1, xChunks)
+		chunk.y = math.min(math.floor((point.y - yOffset + 16384) / yDelta * yChunks) + 1, yChunks)
+		return chunk
+	end
+
+	local function PointInDispChunk(point)
+		local chunk = Vector()
+		chunk.x = math.min(math.floor((point.x - xOffset + 16384) / xDelta * xDispChunks) + 1, xDispChunks)
+		chunk.y = math.min(math.floor((point.y - yOffset + 16384) / yDelta * yDispChunks) + 1, yDispChunks)
+		return chunk
+	end
+
+	local function MarioHasFlag(mask, flag)
+		return (bit.band(mask, flag) != 0)
+	end
+
+	function ENT:MarioIsAttacking()
+		if(MarioHasFlag(self.marioAction, g64types.SM64MarioActionFlags.ACT_FLAG_ATTACKING) &&
+			  (self.marioAction == g64types.SM64MarioAction.ACT_PUNCHING ||
+			   self.marioAction == g64types.SM64MarioAction.ACT_JUMP_KICK ||
+			   self.marioAction == g64types.SM64MarioAction.ACT_GROUND_POUND_LAND ||
+			   self.marioAction == g64types.SM64MarioAction.ACT_SLIDE_KICK ||
+			   self.marioAction == g64types.SM64MarioAction.ACT_SLIDE_KICK_SLIDE ||
+			   self.marioAction == g64types.SM64MarioAction.ACT_DIVE ||
+			   self.marioAction == g64types.SM64MarioAction.ACT_DIVE_SLIDE ||
+			   self.marioAction == g64types.SM64MarioAction.ACT_MOVE_PUNCHING)) then
+			return self.marioAction
+		else
+			return nil
+		end
+	end
+
+	local function MatTypeToTerrainType(matType)
+		if(matType == MAT_CONCRETE || matType == MAT_TILE || matType == MAT_WOOD || matType == MAT_PLASTIC || matType == MAT_GLASS || matType == MAT_METAL) then
+			return g64types.SM64TerrainType.TERRAIN_STONE
+		elseif(matType == MAT_DIRT || matType == MAT_GRASS || matType == MAT_FOLIAGE) then
+			return g64types.SM64TerrainType.TERRAIN_GRASS
+		elseif(matType == MAT_SNOW) then
+			return g64types.SM64TerrainType.TERRAIN_SNOW
+		elseif(matType == MAT_SAND) then
+			return g64types.SM64TerrainType.TERRAIN_SAND
+		elseif(matType == MAT_SLOSH) then
+			return g64types.SM64TerrainType.TERRAIN_WATER
+		else
+			return g64types.SM64TerrainType.TERRAIN_STONE
+		end
+	end
+
+	local fLerpVector = LerpVector
+	function ENT:GenerateMesh()
+		local j = 1 - self.bufferIndex
+		
+		local vertex = vertexBuffers[self.MarioId][self.bufferIndex + 1]
+		local lastVertex = vertexBuffers[self.MarioId][j + 1]
+		
+		if(vertex == nil || lastVertex == nil || vertex[1] == nil || lastVertex[1] == nil) then return end
+		if(vertex[1][#vertex[1]] == nil || lastVertex[1][#lastVertex[1]] == nil) then return end
+		
+		local vertCount = #vertex[1]
+		local triCount = vertCount/3
+		if(vertCount == 0) then return end
+		
+		if(self.Mesh && self.Mesh:IsValid()) then
+			self.Mesh:Destroy()
+			self.Mesh = nil
+		end
+		self.Mesh = Mesh()
+		
+		local t = (SysTime() - fixedTime) / tickRate
+		local col
+		local colTab = self.colorTable
+		mesh.Begin(self.Mesh, MATERIAL_TRIANGLES, triCount)
+		for i = 1, vertCount do
+			if(vertex[1][i] == nil || lastVertex[1][i] == nil) then
+				mesh.End()
+				return
+			end
+			col = colTab[vertex[5][i]]
+			
+			mesh.Position(fLerpVector(t, vertex[1][i], lastVertex[1][i]))
+			mesh.Normal(vertex[2][i])
+			mesh.TexCoord(0, vertex[3][i], vertex[4][i])
+			mesh.Color(col[1], col[2], col[3], 255)
+			mesh.AdvanceVertex()
+		end
+		mesh.End()
+	end
+	
+	function ENT:InitSomeVariables()
+		xDelta = libsm64.XDelta
+		yDelta = libsm64.YDelta
+		worldMin = libsm64.WorldMin
+		worldMax = libsm64.WorldMax
+		xChunks = libsm64.XChunks
+		yChunks = libsm64.YChunks
+		xDispChunks = libsm64.XDispChunks
+		yDispChunks = libsm64.YDispChunks
+		scaleFactor = libsm64.ScaleFactor
+		xOffset = worldMin.x + 16384
+		yOffset = worldMin.y + 16384
+		self.marioPos = Vector()
+		self.marioCenter = Vector()
+		self.marioForward = Vector()
+		self.marioAction = 0
+		self.marioFlags = 0
+		self.marioParticleFlags = 0
+		self.marioInvincTimer = 0
+		self.marioHealth = 2176
+		self.bufferIndex = 0
+		self.lerpedPos = Vector()
+	end
+
+	function ENT:Draw()
+		if(self.marioInvincTimer >= 3 && self.bufferIndex == 1 && self.marioHealth != 255) then return end -- Hitstun blinking effect
+		
+		-- Vertex colors
+		self:DrawModel()
+		
+		-- Lighting
+		render.OverrideBlend(true, BLEND_ZERO, BLEND_SRC_COLOR, BLENDFUNC_REVERSE_SUBTRACT)
+		render.MaterialOverride(marioMat)
+		self:DrawModel()
+		render.OverrideBlend(false)
+		
+		-- Textures
+		render.MaterialOverride(texMat)
+		self:DrawModel()
+		
+		render.MaterialOverride(nil)
+	end
+	
+	function ENT:GetRenderMesh()
+		return { Mesh = self.Mesh, Material = vertMat }
+	end
+
+	function ENT:StartRemoteMario()
+	
+		if(self.MarioId < 0 || self.MarioId == nil) then
+			self:InitSomeVariables()
+			local entPos = self:GetPos()
+			self.tickedPos = -entPos*scaleFactor
+			self.MarioId = libsm64.MarioCreate(entPos, true)
+			self.IsRemote = true
+			self:SetRenderBounds(self.Mins, self.Maxs)
+			self.colorTable = table.Copy(g64types.DefaultMarioColors)
+			
+			vertexBuffers[self.MarioId] = { {}, {} }
+			
+			vertexBuffers[self.MarioId][1] = libsm64.GetMarioTableReference(self.MarioId, 5)
+			vertexBuffers[self.MarioId][2] = libsm64.GetMarioTableReference(self.MarioId, 5)
+		end
+		
+		local animInfo = nil
+		local tickCount = 0
+		local tickTime = 0
+		local tickDeltaTime = 0
+		local function MarioTick()
+			fixedTime = SysTime()
+			
+			if(tickCount > 0) then
+				vertexBuffers[self.MarioId][2] = libsm64.GetMarioTableReference(self.MarioId, 5+8)
+			end
+			libsm64.MarioAnimTick(animInfo, self.MarioId, self.bufferIndex, 0x11, self.tickedPos)
+			
+			tickCount = tickCount + 1
+			
+			if(g64config.Config.Interpolation == 1 && tickDeltaTime < 0.04 && (1 / RealFrameTime()) > 33) then
+				self.bufferIndex = 1 - self.bufferIndex
+			else
+				-- Player ping is too high or FPS is too low, don't even bother interpolating
+				vertexBuffers[self.MarioId][2] = libsm64.GetMarioTableReference(self.MarioId, 5)
+			end
+		end
+		
+		function self:Think()
+			tickDeltaTime = SysTime() - tickTime
+			if(tickDeltaTime > 1.5) then
+				systimetimers.Pause("G64_MARIO_TICK" .. self.MarioId)
+				self:SetNoDraw(true)
+				return
+			else
+				systimetimers.Resume("G64_MARIO_TICK" .. self.MarioId)
+				self:SetNoDraw(false)
+			end
+			if((!gui.IsGameUIVisible() || !game.SinglePlayer()) && tickDeltaTime < 0.04) then
+				self:GenerateMesh()
+			end
+			
+			self:NextThink(CurTime())
+			return true
+		end
+		
+		systimetimers.Create("G64_MARIO_TICK" .. self.MarioId, tickRate, 0, function()
+			if(animInfo == nil) then return end
+			tickDeltaTime = SysTime() - tickTime
+			MarioTick()
+		end)
+		
+		net.Receive("G64_TICKREMOTEMARIO", function(len, ply)
+			if(self.MarioId == nil || self.MarioId < 0) then return end
+			local sent = net.ReadEntity()
+			if(sent != self) then return end
+			animInfo = {}
+			animInfo.animID = net.ReadInt(16)
+			animInfo.animAccel = net.ReadInt(32)
+			animInfo.rotation = Angle(net.ReadInt(16), net.ReadInt(16), net.ReadInt(16))
+			
+			libsm64.SetMarioPosition(self.MarioId, self:GetPos())
+			self.tickedPos = -self:GetPos()*scaleFactor
+			tickTime = SysTime()
+		end)
+		
+		net.Receive("G64_UPDATEREMOTECOLORS", function(len, ply)
+			if(self.MarioId == nil || self.MarioId < 0) then return end
+			local sent = net.ReadEntity()
+			if(sent != self) then return end
+			self.colorTable = {}
+			for i=1, 6 do
+				self.colorTable[i] = { net.ReadUInt(8), net.ReadUInt(8), net.ReadUInt(8) }
+			end
+		end)
+	end
+
+	function ENT:StartLocalMario()
+		
+		if(self.MarioId == nil || self.MarioId < 0) then
+			self:InitSomeVariables()
+			local entPos = LocalPlayer():GetEyeTrace().HitPos
+			marioChunk = PointInChunk(entPos)
+			marioDispChunk = PointInDispChunk(entPos)
+			libsm64.StaticSurfacesLoad(libsm64.MapVertices[marioChunk.x][marioChunk.y], libsm64.DispVertices[marioDispChunk.x][marioDispChunk.y])
+			self.MarioId = libsm64.MarioCreate(entPos, false)
+			self.IsRemote = false
+			self:SetRenderBounds(self.Mins, self.Maxs)
+			
+			vertexBuffers[self.MarioId] = { {}, {} }
+			stateBuffers[self.MarioId] = { {}, {} }
+			
+			stateBuffers[self.MarioId][1] = libsm64.GetMarioTableReference(self.MarioId, 6)
+			vertexBuffers[self.MarioId][1] = libsm64.GetMarioTableReference(self.MarioId, 5)
+			stateBuffers[self.MarioId][2] = libsm64.GetMarioTableReference(self.MarioId, 6)
+			vertexBuffers[self.MarioId][2] = libsm64.GetMarioTableReference(self.MarioId, 5)
+			
+			net.Start("G64_TRANSMITCOLORS")
+				for i=1, 6 do
+					net.WriteUInt(g64config.Config.MarioColors[i][1], 8)
+					net.WriteUInt(g64config.Config.MarioColors[i][2], 8)
+					net.WriteUInt(g64config.Config.MarioColors[i][3], 8)
+				end
+			net.SendToServer()
+		end
+		
+		hook.Add("CreateMove", "G64_CREATEMOVE" .. self.MarioId, function(cmd)
+			local buttons = cmd:GetButtons()
+			inputs = libsm64.GetInputsFromButtonMask(buttons)
+		end)
+		
+		local hitPos = Vector()
+		local animInfo
+		local tickCount = 0
+		local function MarioTick()
+			if(self.MarioId == nil) then return end
+			fixedTime = SysTime()
+		
+			local facing = LocalPlayer():GetAimVector()
+			if(tickCount > 0) then
+				stateBuffers[self.MarioId][2] = libsm64.GetMarioTableReference(self.MarioId, 6+8)
+				vertexBuffers[self.MarioId][2] = libsm64.GetMarioTableReference(self.MarioId, 5+8)
+			end
+			libsm64.MarioTick(self.MarioId, self.bufferIndex, facing, inputs[1], inputs[2], inputs[3], inputs[4])
+			
+			tickCount = tickCount + 1
+			
+			animInfo = libsm64.GetMarioAnimInfo(self.MarioId)
+			
+			local entWaterLevel = self:WaterLevel()
+			if(prevWaterLevel != entWaterLevel) then
+				if(entWaterLevel > 0) then
+					libsm64.SetMarioWaterLevel(self.MarioId, self:GetPos().z*scaleFactor)
+				elseif(entWaterLevel == 0) then
+					libsm64.SetMarioWaterLevel(self.MarioId, -100000)
+				end
+				prevWaterLevel = entWaterLevel
+			end
+			
+			local marioState = stateBuffers[self.MarioId][self.bufferIndex + 1]
+			
+			self.marioPos = marioState[1]
+			self.marioForward = Vector(math.sin(marioState[3]), math.cos(math.pi*2 - marioState[3]), 0)
+			self.marioFlags = marioState[6]
+			self.marioParticleFlags = marioState[7]
+			self.marioHealth = marioState[4]
+			self.marioInvincTimer = marioState[8]
+			self.colorTable = g64config.Config.MarioColors
+			
+			marioChunk = PointInChunk(self.marioPos)
+			marioDispChunk = PointInDispChunk(self.marioPos)
+			if(marioChunk.x ~= prevMarioChunk.x || marioChunk.y ~= prevMarioChunk.y || marioDispChunk.x ~= prevMarioDispChunk.x || marioDispChunk.y ~= prevMarioDispChunk.y) then
+				prevMarioChunk.x = marioChunk.x
+				prevMarioChunk.y = marioChunk.y
+				prevMarioDispChunk.x = marioDispChunk.x
+				prevMarioDispChunk.y = marioDispChunk.y
+				if(g64config.Config.DebugCollision == 1) then
+					print("[G64] Mario World Chunk: ", marioChunk.x .. ", " .. marioChunk.y)
+					print("[G64] Mario Disp Chunk: ", marioDispChunk.x .. ", " .. marioDispChunk.y)
+				end
+				libsm64.StaticSurfacesLoad(libsm64.MapVertices[marioChunk.x][marioChunk.y], libsm64.DispVertices[marioDispChunk.x][marioDispChunk.y])
+			end
+			
+			self.marioCenter = Vector(self.marioPos)
+			self.marioCenter.z = self.marioCenter.z + 50 / scaleFactor
+			
+			if(self.marioParticleFlags != 0) then
+				if(MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_MIST_CIRCLE)) then
+					ParticleEffect("ground_pound", self.marioPos, Angle())
+				end
+				if(MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_DUST)) then
+					ParticleEffect("mario_dust", self.marioPos, Angle())
+				end
+				if(MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_HORIZONTAL_STAR)) then
+					ParticleEffect("mario_horiz_star", self.marioPos, Angle())
+				end
+				if(MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_VERTICAL_STAR) || MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_TRIANGLE)) then
+					local tr = util.TraceLine({
+						start = self.marioCenter,
+						endpos = self.marioCenter + self.marioForward * (140 / scaleFactor),
+						filter = { self, LocalPlayer() },
+					})
+					local ang = tr.HitNormal:Angle()
+					ParticleEffect("mario_vert_star", tr.HitPos, ang)
+				end
+			end
+			
+			self.marioAction = marioState[5]
+			if(attackTimer < SysTime() && self:MarioIsAttacking() != nil) then
+				attackTimer = SysTime() + 0.6
+				if(self.marioAction == g64types.SM64MarioAction.ACT_GROUND_POUND_LAND) then
+					local surroundingEnts = ents.FindInSphere(self.marioPos, 75)
+					for k,v in ipairs(surroundingEnts) do
+						if(v != self && v != LocalPlayer()) then
+							net.Start("G64_MARIOGROUNDPOUND")
+								net.WriteEntity(self)
+								net.WriteEntity(v)
+							net.SendToServer()
+						end
+					end
+				else
+					net.Start("G64_MARIOTRACE")
+						net.WriteEntity(self)
+						net.WriteVector(self.marioCenter)
+						net.WriteFloat(scaleFactor)
+						net.WriteVector(self.marioForward)
+					net.SendToServer()
+					if(g64config.Config.DebugRays == 1) then
+						local tr = util.TraceHull({
+							start = self.marioCenter,
+							endpos = self.marioCenter + self.marioForward * (90 / scaleFactor),
+							filter = { self, LocalPlayer() },
+							mins = Vector(-16, -16, -(40 / scaleFactor)),
+							maxs = Vector(16, 16, 71),
+							mask = MASK_SHOT_HULL
+						})
+						hitPos = tr.HitPos
+					end
+				end
+			end
+			
+			local tr = util.TraceLine({
+				start = self.marioCenter,
+				endpos = self.marioCenter + Vector(0, 0, -400),
+				filter = { self, LocalPlayer() }
+			})
+			libsm64.SetMarioFloorOverrides(self.MarioId, MatTypeToTerrainType(tr.MatType), g64types.SM64SurfaceType.SURFACE_DEFAULT)
+			
+			if(animInfo == nil) then return end
+			local myPos = self.marioPos
+			local myAng = self.marioForward
+			net.Start("G64_TRANSMITMOVE")
+				net.WriteInt(myPos.x, 16)
+				net.WriteInt(myPos.y, 16)
+				net.WriteInt(myPos.z, 16)
+				net.WriteInt(animInfo.animID, 16)
+				net.WriteInt(animInfo.animAccel, 32)
+				net.WriteInt(animInfo.rotation[1], 16)
+				net.WriteInt(animInfo.rotation[2], 16)
+				net.WriteInt(animInfo.rotation[3], 16)
+			net.SendToServer()
+			
+			if(g64config.Config.Interpolation == 1 && (1 / RealFrameTime()) > 33) then
+				self.bufferIndex = 1 - self.bufferIndex
+			else
+				-- Client framerate is lower than 30fps, don't bother interpolating
+				stateBuffers[self.MarioId][2] = libsm64.GetMarioTableReference(self.MarioId, 6)
+				vertexBuffers[self.MarioId][2] = libsm64.GetMarioTableReference(self.MarioId, 5)
+			end
+		end
+		
+		-- Tick Mario at 30Hz
+		systimetimers.Create("G64_MARIO_TICK" .. self.MarioId, tickRate, 0, function()
+			MarioTick()
+		end)
+
+		function self:Think()
+			if(!gui.IsGameUIVisible() || !game.SinglePlayer()) then
+				self:GenerateMesh()
+			end
+			
+			self:NextThink(CurTime())
+			return true
+		end
+
+		hook.Add("PostDrawOpaqueRenderables", "G64_RENDER_OPAQUES" .. self.MarioId, function(bDrawingDepth, bDrawingSkybox, isDraw3DSkybox)
+			if (self.MarioId == nil || self.MarioId < 0 || libsm64 == nil || libsm64.ModuleLoaded == false || libsm64.IsGlobalInit() == false || isDraw3DSkybox || bDrawingDepth) then return end
+			
+			-- Debug map collision
+			if(g64config.Config.DebugCollision == 1 && marioChunk.x != nil && marioChunk.y != nil) then
+				local mapverts = libsm64.MapVertices[marioChunk.x][marioChunk.y]
+				local mapvertcount = #mapverts
+				if mapvertcount == 0 then return end
+				math.randomseed(0)
+				render.SetMaterial(debugMat) -- Apply the material
+				render.ResetModelLighting(1,1,1)
+				mesh.Begin(MATERIAL_TRIANGLES, math.Min(mapvertcount/3, 8192))
+				for i = 1, math.Min(mapvertcount, 32768) do
+					mesh.Position(mapverts[i])
+					mesh.Color(math.random(0, 255),math.random(0, 255),math.random(0, 255),255)
+					mesh.AdvanceVertex()
+				end
+				mesh.End()
+				
+				local dispverts = libsm64.DispVertices[marioDispChunk.x][marioDispChunk.y]
+				local dispvertcount = #dispverts
+				if dispvertcount == 0 then return end
+				render.SetMaterial(debugMat) -- Apply the material
+				render.ResetModelLighting(1,1,1)
+				mesh.Begin(MATERIAL_TRIANGLES, math.Min(dispvertcount/3, 8192))
+				for i = 1, math.Min(dispvertcount, 32768) do
+					mesh.Position(dispverts[i])
+					mesh.Color(math.random(0, 255),math.random(0, 255),math.random(0, 255),255)
+					mesh.AdvanceVertex()
+				end
+				mesh.End()
+			end
+			
+			if(self.marioCenter != nil && scaleFactor != nil && g64config.Config.DebugRays == 1) then
+				render.DrawLine(self.marioCenter + Vector(0,0,60 / scaleFactor), self.marioCenter + Vector(0,0,60 / scaleFactor) + self.marioForward * (90 / scaleFactor), Color(0, 0, 255))
+				render.DrawWireframeBox(hitPos, Angle(0,0,0), Vector(-16, -16, -(40 / scaleFactor)), Vector(16, 16, 71), Color(255,255,255),true)
+			end
+		end)
+		
+		-- From drive_base.lua
+		CalcView_ThirdPerson = function( view, dist, hullsize, ply, entityfilter )
+			local neworigin = view.origin - ply:EyeAngles():Forward() * dist
+			
+			if ( hullsize && hullsize > 0 ) then
+				local tr = util.TraceHull( {
+					start	= view.origin,
+					endpos	= neworigin,
+					mins	= Vector( hullsize, hullsize, hullsize ) * -1,
+					maxs	= Vector( hullsize, hullsize, hullsize ),
+					filter	= entityfilter
+				} )
+
+				if ( tr.Hit ) then
+					neworigin = tr.HitPos
+				end
+
+			end
+
+			view.origin		= neworigin
+			view.angles		= ply:EyeAngles()
+		end
+		
+		local view = {
+			origin = Vector(),
+			angles = Angle(),
+			fov = nil
+		}
+		hook.Add("CalcView", "G64_CALCVIEW" .. self.MarioId, function(ply, origin, angles, fov, znear, zfar)
+			local t = (SysTime() - fixedTime) / tickRate
+			if(stateBuffers[self.MarioId][self.bufferIndex + 1][1] != nil) then
+				self.lerpedPos = LerpVector(t, stateBuffers[self.MarioId][self.bufferIndex + 1][1], stateBuffers[self.MarioId][1-self.bufferIndex + 1][1]) + upOffset
+				self:SetNetworkOrigin(self.lerpedPos)
+				self:SetPos(self.lerpedPos)
+			end
+			
+			view.origin = self.lerpedPos
+			view.origin.z = view.origin.z + 50 / scaleFactor
+			view.angles = angles
+			
+			CalcView_ThirdPerson(view, 200, 2, ply, { self, ply })
+			return view
+		end)
+		
+		net.Receive("G64_DAMAGEMARIO", function(len,ply)
+			local damage = net.ReadUInt(8)
+			local src = Vector(net.ReadInt(16), net.ReadInt(16), net.ReadInt(16))
+			libsm64.MarioTakeDamage(self.MarioId, damage, 0, src)
+		end)
+	end
+
+else
+
+	function ENT:ServerSideMario()
+		local directionAngCos = math.cos(math.pi / 2)
+
+		net.Receive("G64_TRANSMITMOVE", function(len, ply)
+			if(IsValid(ply.MarioEnt)) then
+				local x = net.ReadInt(16)
+				local y = net.ReadInt(16)
+				local z = net.ReadInt(16)
+				local networkedPos = Vector(x, y, z)
+				ply:SetPos(networkedPos)
+				ply.MarioEnt:SetPos(networkedPos)
+				
+				local animInfo = {}
+				animInfo.animID = net.ReadInt(16)
+				animInfo.animAccel = net.ReadInt(32)
+				animInfo.rotation = { net.ReadInt(16), net.ReadInt(16), net.ReadInt(16) }
+				
+				local filter = RecipientFilter()
+				filter:AddAllPlayers()
+				filter:RemovePlayer(ply)
+				--for k,v in ipairs(filter:GetPlayers()) do
+				--	local aimVector = v:GetAimVector()
+				--	local entVector = networkedPos - v:GetShootPos()
+				--	local angCos = aimVector:Dot(entVector) / entVector:Length()
+				--	if(angCos < directionAngCos) then
+				--		filter:RemovePlayer(v)
+				--	end
+				--end
+				
+				net.Start("G64_TICKREMOTEMARIO", true)
+					net.WriteEntity(ply.MarioEnt)
+					net.WriteInt(animInfo.animID, 16)
+					net.WriteInt(animInfo.animAccel, 32)
+					net.WriteInt(animInfo.rotation[1], 16)
+					net.WriteInt(animInfo.rotation[2], 16)
+					net.WriteInt(animInfo.rotation[3], 16)
+				net.Send(filter)
+			end
+		end)
+		
+		net.Receive("G64_TRANSMITCOLORS", function(len, ply)
+			if(IsValid(ply.MarioEnt)) then
+				local colTab = {}
+				for i=1, 6 do
+					colTab[i] = { net.ReadUInt(8), net.ReadUInt(8), net.ReadUInt(8) }
+				end
+				
+				net.Start("G64_UPDATEREMOTECOLORS", false)
+					net.WriteEntity(ply.MarioEnt)
+					for i=1, 6 do
+						net.WriteUInt(colTab[i][1], 8)
+						net.WriteUInt(colTab[i][2], 8)
+						net.WriteUInt(colTab[i][3], 8)
+					end
+				net.SendOmit(ply)
+			end
+		end)
+		
+		hook.Add("EntityTakeDamage", "G64_PLAYER_DAMAGED", function(target, dmg)
+			if(target:IsPlayer() && target.IsMario) then
+				local damage = 1
+				if(dmg:IsBulletDamage()) then
+					damage = 1
+				elseif(dmg:IsExplosionDamage()) then
+					damage = 4
+				end
+				
+				local src = dmg:GetDamagePosition()
+			
+				net.Start("G64_DAMAGEMARIO", true)
+					net.WriteUInt(damage, 8)
+					net.WriteInt(src.x, 16)
+					net.WriteInt(src.y, 16)
+					net.WriteInt(src.z, 16)
+				net.Send(target)
+				
+				return true
+			end
+		end)
+
+	end
+
+end
