@@ -3,6 +3,7 @@ AddCSLuaFile()
 if SERVER then return end
 
 g64config = {}
+g64config.ConVars = {}
 
 g64config.Config = {
 	MarioColors = {
@@ -12,13 +13,7 @@ g64config.Config = {
 		{114, 28 , 14 },
 		{255, 255, 255},
 		{115, 6  , 0  },
-	},
-	DebugCollision = 0,
-	DebugRays = 0,
-	ProcessDisplacements = 1,
-	ProcessStaticProps = 1,
-	Interpolation = 1,
-	CheapDraw = 0
+	}
 }
 
 g64config.Save = function()

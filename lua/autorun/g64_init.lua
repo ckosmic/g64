@@ -1,3 +1,6 @@
+AddCSLuaFile("includes/g64_luabsp.lua")
+AddCSLuaFile("includes/g64_config.lua")
+AddCSLuaFile("includes/g64_types.lua")
 AddCSLuaFile()
 
 game.AddParticles("particles/sm64.pcf")
@@ -5,23 +8,29 @@ PrecacheParticleSystem("ground_pound")
 PrecacheParticleSystem("mario_dust")
 PrecacheParticleSystem("mario_horiz_star")
 PrecacheParticleSystem("mario_vert_star")
+PrecacheParticleSystem("mario_fire")
+
+CreateConVar("g64_metalcap_timer", "600", FCVAR_CHEAT, "Timer for the metal cap (default: 600)", 0, 65535)
+CreateConVar("g64_wingcap_timer", "1800", FCVAR_CHEAT, "Timer for the wing cap (default: 1800)", 0, 65535)
+CreateConVar("g64_processdisplacements", "1", FCVAR_CHEAT)
+CreateConVar("g64_processstaticprops", "1", FCVAR_CHEAT)
 
 if CLIENT then
 
-	include("g64/g64_config.lua")
-	
-	--include("sm64/luabsp.lua")
-	--local bsp = luabsp.LoadMap(game:GetMap())
-	--bsp:LoadStaticProps()
-	--for i = 1, #bsp.static_props do
-	--	for k,v in ipairs(bsp.static_props[i].entries) do
-	--		print(v.PropType)
-	--	end
-	--end
+	include("includes/g64_config.lua")
+
+	CreateClientConVar("g64_debugcollision", "0", true, false)
+	CreateClientConVar("g64_debugrays", "0", true, false)
+	--CreateClientConVar("g64_processdisplacements", "1", true, false)
+	--CreateClientConVar("g64_processstaticprops", "1", true, false)
+	CreateClientConVar("g64_interpolation", "1", true, false)
+	CreateClientConVar("g64_rompath", "", true, false)
+	CreateClientConVar("g64_upd_col_flag", "0", true, false)
 
 	local function LoadSM64Module()
 		if(file.Exists("lua/bin/gmcl_libsm64-gmod_win64.dll", "MOD")) then
 			require("libsm64-gmod")
+			libsm64.ModuleExists = true
 			libsm64.ModuleLoaded = true
 			libsm64.MapLoaded = false
 			libsm64.ScaleFactor = 2.5
@@ -30,7 +39,15 @@ if CLIENT then
 			libsm64.SetScaleFactor(libsm64.ScaleFactor)
 			
 			if(!LocalPlayer().SM64LoadedMap) then
-				timer.Simple(4, function()
+				net.Start("G64_UPLOADCOLORS")
+					for i=1, 6 do
+						net.WriteUInt(g64config.Config.MarioColors[i][1], 8)
+						net.WriteUInt(g64config.Config.MarioColors[i][2], 8)
+						net.WriteUInt(g64config.Config.MarioColors[i][3], 8)
+					end
+				net.SendToServer()
+				
+				timer.Simple(2, function()
 					net.Start("G64_LOADMAPGEO")
 					print("[G64] Getting map geometry...")
 					net.SendToServer()
@@ -61,7 +78,7 @@ if CLIENT then
 					yChunks = math.ceil(yDelta / tileSize)
 					xDispChunks = math.ceil(xDelta / dispTileSize)
 					yDispChunks = math.ceil(yDelta / dispTileSize)
-					if(g64config.Config.DebugCollision == 1) then
+					if(GetConVar("g64_debugcollision"):GetBool()) then
 						print("[G64] Chunks: ", xChunks, yChunks)
 						print("[G64] World bounds: ", worldMin.x, worldMin.y, worldMax.x, worldMax.y)
 					end
@@ -87,7 +104,7 @@ if CLIENT then
 					libsm64.YDispChunks = yDispChunks
 				end
 				
-				local function PlaceTriangleInChunks(vecs, vertTable, nChunksX, nChunksY, vertOffset)
+				function PlaceTriangleInChunks(vecs, vertTable, nChunksX, nChunksY, vertOffset)
 					local triVerts = {}
 					local chunksToPlaceIn = {}
 					local triMin = Vector(16384, 16384)
@@ -96,7 +113,7 @@ if CLIENT then
 					if(vertOffset == nil) then vertOffset = Vector() end
 					
 					for i = 1, 3 do
-						local x = math.Clamp(vecs[i].x + vertOffset.x, worldMin.x, worldMax.x) -- Some vertices end up outside model bounds
+						local x = math.Clamp(vecs[i].x + vertOffset.x, worldMin.x, worldMax.x)
 						local y = math.Clamp(vecs[i].y + vertOffset.y, worldMin.y, worldMax.y)
 						local z = vecs[i].z + vertOffset.z
 						local xChunk, yChunk
@@ -131,11 +148,116 @@ if CLIENT then
 					end
 				end
 				
+				function ParseBSP()
+					include("includes/g64_luabsp.lua")
+					local bsp = luabsp.LoadMap(game:GetMap())
+					
+					-- Displacements aren't included in map phys geometry,
+					-- so we have to do the next cursed thing: bsp parsing
+					local function ParseDisplacements()
+						print("[G64] Processing displacements...")
+						bsp:LoadDisplacementVertices()
+						for i = 1, #bsp.displacement_vertices, 3 do
+							local vecs = {
+								bsp.displacement_vertices[i],
+								bsp.displacement_vertices[i+1],
+								bsp.displacement_vertices[i+2]
+							}
+							
+							PlaceTriangleInChunks(vecs, dispVertices, xDispChunks, yDispChunks)
+						end
+					end
+					
+					-- Neither are prop_statics
+					local function ParseStaticProps()
+						print("[G64] Processing static props...")
+						
+						local function RotateVertices(verts, ang)
+							local cosa = math.cos(ang.y * 0.017453)
+							local sina = math.sin(ang.y * 0.017453)
+							
+							local cosb = math.cos(ang.x * 0.017453)
+							local sinb = math.sin(ang.x * 0.017453)
+							
+							local cosc = math.cos(ang.z * 0.017453)
+							local sinc = math.sin(ang.z * 0.017453)
+							
+							local Axx = cosa*cosb
+							local Axy = cosa*sinb*sinc - sina*cosc
+							local Axz = cosa*sinb*cosc + sina*sinc
+							
+							local Ayx = sina*cosb
+							local Ayy = sina*sinb*sinc + cosa*cosc
+							local Ayz = sina*sinb*cosc - cosa*sinc
+							
+							local Azx = -sinb
+							local Azy = cosb*sinc
+							local Azz = cosb*cosc
+							
+							local returnVerts = {}
+							for i = 1, #verts do
+								local px = verts[i].x
+								local py = verts[i].y
+								local pz = verts[i].z
+								
+								local nx = Axx*px + Axy*py + Axz*pz
+								local ny = Ayx*px + Ayy*py + Ayz*pz
+								local nz = Azx*px + Azy*py + Azz*pz
+								
+								returnVerts[i] = Vector(nx, ny, nz)
+							end
+							
+							return returnVerts
+						end
+						
+						bsp:LoadStaticProps()
+						for i = 1, #bsp.static_props do
+							local props = {}
+							for k,v in ipairs(bsp.static_props[i].names) do
+								local csEnt = ents.CreateClientProp(v)
+								props[v] = {}
+								if(csEnt:GetPhysicsObject():IsValid()) then
+									for k,convex in pairs(csEnt:GetPhysicsObject():GetMeshConvexes()) do
+										for k,vertex in pairs(convex) do
+											table.insert(props[v], vertex.pos)
+										end
+									end
+								end
+								csEnt:Remove()
+							end
+							for k,v in ipairs(bsp.static_props[i].entries) do
+								local propVerts = props[v.PropType]
+								if(propVerts != nil && v.Solid == 6) then
+									local rotatedVerts = RotateVertices(propVerts, v.Angles)
+									for j = 1, #rotatedVerts, 3 do
+										local vecs = {
+											rotatedVerts[j],
+											rotatedVerts[j+1],
+											rotatedVerts[j+2]
+										}
+										
+										PlaceTriangleInChunks(vecs, vertices, xChunks, yChunks, v.Origin)
+									end
+								end
+							end
+						end
+					end
+					
+					if(GetConVar("g64_processdisplacements"):GetBool()) then
+						ParseDisplacements()
+					end
+					if(GetConVar("g64_processstaticprops"):GetBool()) then
+						ParseStaticProps()
+					end
+				end
+				
 				net.Receive("G64_LOADMAPGEO", function(len, ply)
 					local msg = net.ReadUInt(8)
 					if(msg == 0) then
+						-- Setup variables n stuff
 						InitMapDownload()
 					elseif(msg == 1) then
+						-- Process map phys geometry
 						local vertCount = net.ReadUInt(32)
 						local tileArea = tileSize * tileSize
 						for i = 1, vertCount, 3 do
@@ -147,102 +269,7 @@ if CLIENT then
 							PlaceTriangleInChunks(vecs, vertices, xChunks, yChunks)
 						end
 					elseif(msg == 2) then
-						include("g64/luabsp.lua")
-						local bsp = luabsp.LoadMap(game:GetMap())
-						
-						-- Displacements aren't included in map phys geometry,
-						-- so we have to do the next cursed thing: bsp parsing
-						if(g64config.Config.ProcessDisplacements == 1) then
-							print("[G64] Processing displacements...")
-							
-							bsp:LoadDisplacementVertices()
-							for i = 1, #bsp.displacement_vertices, 3 do
-								local vecs = {
-									bsp.displacement_vertices[i],
-									bsp.displacement_vertices[i+1],
-									bsp.displacement_vertices[i+2]
-								}
-								
-								PlaceTriangleInChunks(vecs, dispVertices, xDispChunks, yDispChunks)
-							end
-						end
-						
-						-- Neither are prop_statics
-						if(g64config.Config.ProcessStaticProps == 1) then
-							print("[G64] Processing static props...")
-						
-							local function RotateVertices(verts, ang)
-								local cosa = math.cos(ang.y * 0.017453)
-								local sina = math.sin(ang.y * 0.017453)
-								
-								local cosb = math.cos(ang.x * 0.017453)
-								local sinb = math.sin(ang.x * 0.017453)
-								
-								local cosc = math.cos(ang.z * 0.017453)
-								local sinc = math.sin(ang.z * 0.017453)
-								
-								local Axx = cosa*cosb
-								local Axy = cosa*sinb*sinc - sina*cosc
-								local Axz = cosa*sinb*cosc + sina*sinc
-								
-								local Ayx = sina*cosb
-								local Ayy = sina*sinb*sinc + cosa*cosc
-								local Ayz = sina*sinb*cosc - cosa*sinc
-								
-								local Azx = -sinb
-								local Azy = cosb*sinc
-								local Azz = cosb*cosc
-								
-								local returnVerts = {}
-								for i = 1, #verts do
-									local px = verts[i].x
-									local py = verts[i].y
-									local pz = verts[i].z
-									
-									local nx = Axx*px + Axy*py + Axz*pz
-									local ny = Ayx*px + Ayy*py + Ayz*pz
-									local nz = Azx*px + Azy*py + Azz*pz
-									
-									returnVerts[i] = Vector(nx, ny, nz)
-								end
-								
-								return returnVerts
-							end
-							
-							bsp:LoadStaticProps()
-							for i = 1, #bsp.static_props do
-								local props = {}
-								for k,v in ipairs(bsp.static_props[i].names) do
-									local csEnt = ents.CreateClientProp(v)
-									props[v] = {}
-									if(csEnt:GetPhysicsObject():IsValid()) then
-										for k,convex in pairs(csEnt:GetPhysicsObject():GetMeshConvexes()) do
-											for k,vertex in pairs(convex) do
-												table.insert(props[v], vertex.pos)
-											end
-										end
-									end
-									csEnt:Remove()
-								end
-								for k,v in ipairs(bsp.static_props[i].entries) do
-									local propVerts = props[v.PropType]
-									if(propVerts != nil && v.Solid == 6) then
-										local rotatedVerts = RotateVertices(propVerts, v.Angles)
-										for j = 1, #rotatedVerts, 3 do
-											local vecs = {
-												rotatedVerts[j],
-												rotatedVerts[j+1],
-												rotatedVerts[j+2]
-											}
-											
-											PlaceTriangleInChunks(vecs, vertices, xChunks, yChunks, v.Origin)
-										end
-										-- Unrotate the vertices since other objects will reuse them
-										--RotateVertices(propVerts, Vector(-v.Angles.x, -v.Angles.y, -v.Angles.z))
-									end
-								end
-							end
-						end
+						ParseBSP()
 						
 						local endTime = CurTime()
 						local deltaTime = endTime - startTime
@@ -260,7 +287,52 @@ if CLIENT then
 							prop_vehicle_jeep = true,
 							prop_vehicle_prisoner_pod = true,
 							prop_door_rotating = true,
-							gmod_sent_vehicle_fphysics_base = true
+							gmod_sent_vehicle_fphysics_base = true,
+							--[[npc_alyx = true,
+							npc_antlion = true,
+							npc_antlion_template_maker = true,
+							npc_antlionguard = true,
+							npc_barnacle = true,
+							npc_barney = true,
+							npc_breen = true,
+							npc_citizen = true,
+							npc_combine_camera = true,
+							npc_combine_s = true,
+							npc_combinedropship = true,
+							npc_combinegunship = true,
+							npc_crabsynth = true,
+							npc_cranedriver = true,
+							npc_crow = true,
+							npc_cscanner = true,
+							npc_dog = true,
+							npc_eli = true,
+							npc_fastzombie = true,
+							npc_fisherman = true,
+							npc_gman = true,
+							npc_headcrab = true,
+							npc_headcrab_black = true,
+							npc_headcrab_fast = true,
+							npc_helicopter = true,
+							npc_ichthyosaur = true,
+							npc_kleiner = true,
+							npc_manhack = true,
+							npc_metropolice = true,
+							npc_monk = true,
+							npc_mortarsynth = true,
+							npc_mossman = true,
+							npc_pigeon = true,
+							npc_poisonzombie = true,
+							npc_rollermine = true,
+							npc_seagull = true,
+							npc_sniper = true,
+							npc_stalker = true,
+							npc_strider = true,
+							npc_turret_ceiling = true,
+							npc_turret_floor = true,
+							npc_turret_ground = true,
+							npc_vortigaunt = true,
+							npc_zombie = true,
+							npc_zombie_torso = true,]]
 						}
 						libsm64.AllowedBrushEnts = {
 							func_door = true,
@@ -285,15 +357,17 @@ if CLIENT then
 		else
 			libsm64 = {}
 			libsm64.ModuleExists = false
+			libsm64.ModuleLoaded = false
 			libsm64.MapLoaded = false
 			libsm64.ScaleFactor = 2
-			print("[G64] Couldn't locate the libsm64-gmod module!")
+			MsgC(Color(255, 100, 100), "[G64] Couldn't locate the libsm64-gmod module!\n")
 		end
 	end
 
 	hook.Add("Think", "G64_INITIALIZE", function()
 		hook.Remove("Think", "G64_INITIALIZE")
 		g64config.Load()
+		
 		LoadSM64Module()
 	end)
 else

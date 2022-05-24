@@ -1,7 +1,5 @@
 AddCSLuaFile()
 
-if SERVER then return end
-
 g64types = {}
 
 g64types.MARIO_PUNCHING = 0x00100000

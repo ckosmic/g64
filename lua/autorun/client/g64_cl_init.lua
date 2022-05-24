@@ -1,6 +1,6 @@
 AddCSLuaFile()
 
-include("g64/g64_config.lua")
+include("includes/g64_config.lua")
 
 -- Entity collision system from GWater-V3
 local propQueue = propQueue or {}
@@ -9,6 +9,12 @@ local surfaceIds = surfaceIds or {}
 local function AddPropMesh(prop)
 	if(!prop || !prop:IsValid()) then return end
 	
+	local surf = prop.G64SurfaceType
+	local terr = prop.G64TerrainType
+	
+	if(surf == nil) then surf = 0 end
+	if(terr == nil) then terr = 0 end
+	
 	if(prop:IsScripted() && prop:GetPhysicsObject():IsValid()) then
 		surfaceIds[#libsm64.EntMeshes+1] = {}
 		for k,convex in pairs(prop:GetPhysicsObject():GetMeshConvexes()) do
@@ -16,7 +22,7 @@ local function AddPropMesh(prop)
 			for k,vertex in pairs(convex) do
 				finalMesh[#finalMesh + 1] = vertex.pos
 			end
-			table.insert(surfaceIds[#libsm64.EntMeshes+1], libsm64.SurfaceObjectCreate(finalMesh, prop:GetPos(), prop:GetAngles()))
+			table.insert(surfaceIds[#libsm64.EntMeshes+1], libsm64.SurfaceObjectCreate(finalMesh, prop:GetPos(), prop:GetAngles(), surf, terr))
 			finalMesh = nil
 		end
 		table.insert(libsm64.EntMeshes, prop)
@@ -39,7 +45,7 @@ local function AddPropMesh(prop)
 		
 		if(#finalMesh == 0) then return end
 		surfaceIds[#libsm64.EntMeshes+1] = {}
-		table.insert(surfaceIds[#libsm64.EntMeshes+1], libsm64.SurfaceObjectCreate(finalMesh, prop:GetPos(), prop:GetAngles()))
+		table.insert(surfaceIds[#libsm64.EntMeshes+1], libsm64.SurfaceObjectCreate(finalMesh, prop:GetPos(), prop:GetAngles(), surf, terr))
 		table.insert(libsm64.EntMeshes, prop)
 		finalMesh = nil
 		return
@@ -61,7 +67,7 @@ local function AddPropMesh(prop)
 			for k,vertex in pairs(convex) do
 				finalMesh[#finalMesh + 1] = vertex.pos
 			end
-			table.insert(surfaceIds[#libsm64.EntMeshes+1], libsm64.SurfaceObjectCreate(finalMesh, prop:GetPos(), prop:GetAngles()))
+			table.insert(surfaceIds[#libsm64.EntMeshes+1], libsm64.SurfaceObjectCreate(finalMesh, prop:GetPos(), prop:GetAngles(), surf, terr))
 			finalMesh = nil
 		end
 		table.insert(libsm64.EntMeshes, prop)
@@ -73,7 +79,7 @@ local function AddPropMesh(prop)
 			end
 		end
 		surfaceIds[#libsm64.EntMeshes+1] = {}
-		table.insert(surfaceIds[#libsm64.EntMeshes+1], libsm64.SurfaceObjectCreate(finalMesh, prop:GetPos(), prop:GetAngles()))
+		table.insert(surfaceIds[#libsm64.EntMeshes+1], libsm64.SurfaceObjectCreate(finalMesh, prop:GetPos(), prop:GetAngles(), surf, terr))
 		table.insert(libsm64.EntMeshes, prop)
 		finalMesh = nil
 	end
@@ -82,10 +88,23 @@ local function AddPropMesh(prop)
 end
 
 hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
+	
 	function libsm64.AddColliderToQueue(ent)
 		if(ent:IsValid() && !ent.SM64_UPLOADED && (libsm64.AllowedEnts[ent:GetClass()] || libsm64.AllowedBrushEnts[ent:GetClass()])) then
 			propQueue[#propQueue+1] = ent
 			ent.SM64_UPLOADED = true
+		end
+	end
+
+	function libsm64.RemoveCollider(ent)
+		ent.SM64_UPLOADED = false
+		local entIndex = table.KeyFromValue(libsm64.EntMeshes, ent)
+		if(surfaceIds[entIndex] != nil) then
+			for j,surfaceId in pairs(surfaceIds[entIndex]) do
+				libsm64.SurfaceObjectDelete(surfaceId)
+			end
+			table.remove(surfaceIds, entIndex)
+			table.remove(libsm64.EntMeshes, entIndex)
 		end
 	end
 	
@@ -135,7 +154,17 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 end)
 
 hook.Add("ShutDown", "G64_SHUTTING_DOWN", function()
-	libsm64.GlobalTerminate()
+	if(libsm64.ModuleLoaded == true) then
+		libsm64.GlobalTerminate()
+	end
+end)
+
+net.Receive("G64_CHANGESURFACEINFO", function(len)
+	local ent = net.ReadEntity()
+	ent.G64SurfaceType = net.ReadInt(16)
+	ent.G64TerrainType = net.ReadUInt(16)
+	libsm64.RemoveCollider( ent )
+	libsm64.AddColliderToQueue( ent )
 end)
 
 concommand.Add("g64_load_module", function(ply, cmd, args)
@@ -151,14 +180,14 @@ concommand.Add("g64_isinit", function(ply, cmd, args)
 	print(libsm64.IsGlobalInit())
 end)
 concommand.Add("g64_config_set", function(ply, cmd, args)
-	if(sm64config.Config[args[1]] == nil) then MsgC(Color(255,100,100), "[G64] Config contains no key: ", args[1], "\n") return end
+	if(g64config.Config[args[1]] == nil) then MsgC(Color(255,100,100), "[G64] Config contains no key: ", args[1], "\n") return end
 	
 	local parsed = tonumber(args[2])
 	if(parsed != nil) then
-		sm64config.Config[args[1]] = parsed
+		g64config.Config[args[1]] = parsed
 	else
-		sm64config.Config[args[1]] = args[2]
+		g64config.Config[args[1]] = args[2]
 	end
 	
-	sm64config.Save()
+	g64config.Save()
 end)

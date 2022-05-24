@@ -1,5 +1,5 @@
 -- luabsp by h3xcat: https://github.com/h3xcat/gmod-luabsp
--- Modified by ckosmic to read displacement info/vertices
+-- ckosmic: reads displacement info/vertices
 -- with help from https://github.com/maesse/CubeHags
 
 local lib_id =  debug.getinfo( 1, "S" ).short_src
@@ -702,6 +702,7 @@ do
 		local worldVerts = self.lumps[LUMP_VERTEXES]["data"]
 		local dispVerts = self.lumps[LUMP_DISP_VERTS]["data"]
 		
+		self.displacement_vertices = {}
 		local displacement_vertices = {}
 		local curVert = 0
 		for _,dispinfo in ipairs( self.displacement_infos ) do
@@ -782,7 +783,6 @@ do
 							table.insert(displacement_vertices, vertexGrid[x+1][y])
 							table.insert(displacement_vertices, vertexGrid[x+1][y+1])
 							
-							
 							table.insert(displacement_vertices, vertexGrid[x][y])
 							table.insert(displacement_vertices, vertexGrid[x+1][y+1])
 							table.insert(displacement_vertices, vertexGrid[x][y+1])
@@ -794,14 +794,13 @@ do
 							table.insert(displacement_vertices, vertexGrid[x+1][y])
 							table.insert(displacement_vertices, vertexGrid[x+1][y+1])
 							table.insert(displacement_vertices, vertexGrid[x][y+1])
-							
 						end
 					end
 				end
 			end
 		end
-		self.displacement_vertices = displacement_vertices
 		
+		self.displacement_vertices = displacement_vertices
 		fl:Close()
 	end
 
