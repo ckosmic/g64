@@ -21,9 +21,11 @@ ENT.Invalid = false
 
 -- Would be nice if I didn't have to do this
 function ENT:RemoveFromClient()
-	net.Start("G64_REMOVEINVALIDMARIO")
-	net.WriteEntity(self)
-	net.SendToServer()
+	if(self.Owner == LocalPlayer()) then
+		net.Start("G64_REMOVEINVALIDMARIO")
+		net.WriteEntity(self)
+		net.SendToServer()
+	end
 end
 
 -- Ensure singleton mario
@@ -66,8 +68,8 @@ function ENT:Initialize()
 		hook.Add("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex(), function()
 			if(libsm64 != nil && libsm64.ModuleExists == false) then
 				chat.AddText(Color(255, 100, 100), "[G64] Couldn't locate the libsm64-gmod binary module!\nPlease place it in ", Color(100, 255, 100), "garrysmod/lua/bin", Color(255, 100, 100), " and reconnect.")
-				self:RemoveFromClient()
 				hook.Remove("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex())
+				self:RemoveFromClient()
 			end
 			if(libsm64 != nil && libsm64.ModuleLoaded == true && libsm64.MapLoaded == true) then
 				hook.Remove("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex())
@@ -151,8 +153,10 @@ function ENT:OnRemove()
 			drive.PlayerStopDriving(self.Owner)
 			
 		end
-		self.Owner:SetModelScale(1, 0)
-		self.Owner.IsMario = false
+		if(self.Owner) then
+			self.Owner:SetModelScale(1, 0)
+			self.Owner.IsMario = false
+		end
 	end
 end
 
@@ -426,7 +430,7 @@ if (CLIENT) then
 	end
 
 	function ENT:Draw()
-		if(self.marioInvincTimer >= 3 && self.bufferIndex == 1 && self.marioHealth != 255) then return end -- Hitstun blinking effect
+		if(self.marioInvincTimer != nil && self.marioInvincTimer >= 3 && self.bufferIndex == 1 && self.marioHealth != 255) then return end -- Hitstun blinking effect
 		
 		if(self.hasMetalCap) then
 			render.MaterialOverride(metalMat)
