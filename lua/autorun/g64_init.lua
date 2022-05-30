@@ -44,15 +44,15 @@ if CLIENT then
 			local libreq = libsm64.CheckLibRequirement()
 
 			if(REQUIRED_MODULE != libsm64.ModuleVersion && REQUIRED_LIBSM64 != libsm64.LibSM64Version) then
-				chat.AddText(Color(255, 100, 100), "[G64] Your G64 binary module and libsm64 versions are outdated! Please download the latest versions of both.\n")
+				chat.AddText(Color(255, 100, 100), "[G64] Your G64 binary module and libsm64 versions are outdated! Please download the latest versions of both from ", Color(86, 173, 255), "https://github.com/ckosmic/g64#installation\n")
 				LoadFailure()
 				return
 			elseif(REQUIRED_MODULE != libsm64.ModuleVersion || mismatch == 1) then
-				chat.AddText(Color(255, 100, 100), "[G64] Your version of the G64 binary module is outdated! Please download the latest version of the G64 binary module.\n")
+				chat.AddText(Color(255, 100, 100), "[G64] Your version of the G64 binary module is outdated! Please download the latest version of the G64 binary module from ", Color(86, 173, 255), "https://github.com/ckosmic/g64#installation\n")
 				LoadFailure()
 				return
 			elseif(REQUIRED_LIBSM64 != libsm64.LibSM64Version || mismatch == 2) then
-				chat.AddText(Color(255, 100, 100), "[G64] Your version of libsm64 is outdated! Please download the latest version of libsm64.\n")
+				chat.AddText(Color(255, 100, 100), "[G64] Your version of libsm64 is outdated! Please download the latest version of libsm64 from ", Color(86, 173, 255), "https://github.com/ckosmic/g64#installation\n")
 				LoadFailure()
 				return
 			end
@@ -384,7 +384,7 @@ if CLIENT then
 		else
 			libsm64 = {}
 			LoadFailure()
-			MsgC(Color(255, 100, 100), "[G64] Couldn't locate the G64 binary module!\n")
+			MsgC(Color(255, 100, 100), "[G64] Couldn't locate the G64 binary module! Please download it from https://github.com/ckosmic/g64#installation\n")
 		end
 	end
 
