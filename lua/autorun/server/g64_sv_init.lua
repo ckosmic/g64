@@ -139,6 +139,13 @@ hook.Add("PlayerDeath", "G64_PLAYER_DEATH", function(victim, inflictor, attacker
 	end
 end)
 
+-- Exit mario if the use key is pressed
+hook.Add("KeyPress", "G64_EXIT_MARIO", function(ply, key)
+	if(IsValid(ply.MarioEnt)) and ( key == IN_USE ) then
+		ply.MarioEnt:Remove()
+	end
+end)
+
 hook.Add("EntityRemoved", "G64_ENTITY_REMOVED", function(ent)
 	local ply = ent.Owner
 	if(ply != nil && ply:IsValid() && ply:IsPlayer() && ply.IsMario == true) then
