@@ -6,6 +6,29 @@ include("includes/g64_config.lua")
 local propQueue = propQueue or {}
 local surfaceIds = surfaceIds or {}
 
+function SeqArgs(priority, seqId)
+	return bit.bor(bit.lshift(priority, 8), seqId)
+end
+
+function StopAllTracks()
+	for i = 0, 0x22 do
+		libsm64.StopMusic(i)
+	end
+end
+
+function PlayTrack(seqId)
+	if(libsm64 != nil && libsm64.ModuleLoaded == true && libsm64.IsGlobalInit()) then
+		StopAllTracks()
+		libsm64.PlayMusic(0, SeqArgs(4, seqId), 0)
+	end
+end
+
+local meta = FindMetaTable("Player")
+
+function meta:HasGodMode()
+	return self:GetNWBool("HasGodMode")
+end
+
 local function AddPropMesh(prop)
 	if(!prop || !prop:IsValid()) then return end
 	
@@ -15,7 +38,7 @@ local function AddPropMesh(prop)
 	if(surf == nil) then surf = 0 end
 	if(terr == nil) then terr = 0 end
 	
-	if(prop:IsScripted() && prop:GetPhysicsObject():IsValid()) then
+	if(prop:IsScripted() && prop:GetPhysicsObject():IsValid() && prop:GetPhysicsObject():IsCollisionEnabled()) then
 		surfaceIds[#libsm64.EntMeshes+1] = {}
 		for k,convex in pairs(prop:GetPhysicsObject():GetMeshConvexes()) do
 			local finalMesh = {}
@@ -60,7 +83,7 @@ local function AddPropMesh(prop)
 		return
 	end
 	
-	if(prop:GetPhysicsObject():IsValid()) then
+	if(prop:GetPhysicsObject():IsValid() && prop:GetPhysicsObject():IsCollisionEnabled()) then
 		surfaceIds[#libsm64.EntMeshes+1] = {}
 		for k,convex in pairs(prop:GetPhysicsObject():GetMeshConvexes()) do
 			local finalMesh = {}
@@ -126,6 +149,19 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 					libsm64.SurfaceObjectDelete(surfaceId)
 				end
 			else
+				local vPhys = v:GetPhysicsObject()
+				if(vPhys:IsValid()) then
+					if(v.CollisionState != nil) then
+						local vColState = v:GetPhysicsObject():IsCollisionEnabled()
+						if(v.CollisionState != vColState) then
+							v.CollisionState = vColState
+							libsm64.RemoveCollider(v)
+						end
+					else
+						v.CollisionState = v:GetPhysicsObject():IsCollisionEnabled()
+					end
+				end
+				
 				for j,surfaceId in pairs(surfaceIds[k]) do
 					libsm64.SurfaceObjectMove(surfaceId, v:GetPos(), v:GetAngles())
 				end

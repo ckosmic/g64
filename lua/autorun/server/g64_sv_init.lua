@@ -218,3 +218,20 @@ net.Receive("G64_REMOVEINVALIDMARIO", function(len, ply)
 	local ent = net.ReadEntity()
 	if(ent != nil) then ent:Remove() end
 end)
+
+local meta = FindMetaTable("Player")
+
+meta.DefaultGodEnable = meta.DefaultGodEnable or meta.GodEnable
+meta.DefaultGodDisable = meta.DefaultGodDisable or meta.GodDisable
+
+function meta:GodEnable()
+	print("god enabled")
+	self:SetNWBool("HasGodMode", true)
+	self:DefaultGodEnable()
+end
+
+function meta:GodDisable()
+	print("god disabled")
+	self:SetNWBool("HasGodMode", false)
+	self:DefaultGodDisable()
+end

@@ -145,6 +145,9 @@ function ENT:OnRemove()
 				self.MarioId = -10
 				if(self.Owner != nil && IsValid(self.Owner)) then -- Is null if local player disconnects
 					self.Owner:SetNoDraw(false)
+					if(self.Owner == LocalPlayer()) then
+						StopAllTracks()
+					end
 				end
 			end
 		else
@@ -639,7 +642,7 @@ if (CLIENT) then
 			self.colorTable = g64config.Config.MarioColors
 			self.hasWingCap = MarioHasFlag(self.marioFlags, 0x00000008)
 			self.hasMetalCap = MarioHasFlag(self.marioFlags, 0x00000004)
-			
+
 			--if(lPlayer:GetPos():DistToSqr(self.lerpedPos) > 100000) then
 			--	-- Probably used a teleporter, so teleport Mario to the player
 			--	libsm64.SetMarioPosition(self.MarioId, lPlayer:GetPos())
@@ -756,12 +759,12 @@ if (CLIENT) then
 			end
 			
 			if(self.EnableWingCap == true) then
-				libsm64.MarioEnableCap(self.MarioId, 0x00000008, GetConVar("g64_wingcap_timer"):GetInt())
+				libsm64.MarioEnableCap(self.MarioId, 0x00000008, GetConVar("g64_wingcap_timer"):GetInt(), GetConVar("g64_cap_music"):GetBool())
 				self.EnableWingCap = false
 				self.hasWingCap = true
 			end
 			if(self.EnableMetalCap == true) then
-				libsm64.MarioEnableCap(self.MarioId, 0x00000004, GetConVar("g64_metalcap_timer"):GetInt())
+				libsm64.MarioEnableCap(self.MarioId, 0x00000004, GetConVar("g64_metalcap_timer"):GetInt(), GetConVar("g64_cap_music"):GetBool())
 				self.EnableMetalCap = false
 				self.hasMetalCap = true
 			end
