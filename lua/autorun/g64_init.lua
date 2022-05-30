@@ -16,7 +16,7 @@ CreateConVar("g64_processdisplacements", "1", FCVAR_CHEAT)
 CreateConVar("g64_processstaticprops", "1", FCVAR_CHEAT)
 
 REQUIRED_LIBSM64 = 1
-REQUIRED_MODULE = 1
+REQUIRED_MODULE = 2
 
 if CLIENT then
 
