@@ -15,7 +15,7 @@ CreateConVar("g64_wingcap_timer", "1800", FCVAR_CHEAT, "Timer for the wing cap (
 CreateConVar("g64_processdisplacements", "1", FCVAR_CHEAT)
 CreateConVar("g64_processstaticprops", "1", FCVAR_CHEAT)
 
-REQUIRED_LIBSM64 = 2
+REQUIRED_LIBSM64 = 1
 REQUIRED_MODULE = 1
 
 if CLIENT then
@@ -37,13 +37,17 @@ if CLIENT then
 	end
 
 	local function LoadSM64Module()
-		if(file.Exists("lua/bin/gmcl_libsm64-gmod_win64.dll", "MOD")) then
-			require("libsm64-gmod")
+		if(file.Exists("lua/bin/gmcl_g64_win64.dll", "MOD")) then
+			require("g64")
 			libsm64.ModuleVersion = libsm64.GetModuleVersion()
 			libsm64.LibSM64Version = libsm64.GetLibVersion()
 			local libreq = libsm64.CheckLibRequirement()
 
-			if(REQUIRED_MODULE != libsm64.ModuleVersion || mismatch == 1) then
+			if(REQUIRED_MODULE != libsm64.ModuleVersion && REQUIRED_LIBSM64 != libsm64.LibSM64Version) then
+				chat.AddText(Color(255, 100, 100), "[G64] Your G64 binary module and libsm64 versions are outdated! Please download the latest versions of both.\n")
+				LoadFailure()
+				return
+			elseif(REQUIRED_MODULE != libsm64.ModuleVersion || mismatch == 1) then
 				chat.AddText(Color(255, 100, 100), "[G64] Your version of the G64 binary module is outdated! Please download the latest version of the G64 binary module.\n")
 				LoadFailure()
 				return
@@ -57,7 +61,7 @@ if CLIENT then
 			libsm64.ModuleLoaded = true
 			libsm64.MapLoaded = false
 			libsm64.ScaleFactor = 2.5
-			print("[G64] Loaded libsm64-gmod module version "..libsm64.ModuleVersion.."!")
+			print("[G64] Loaded G64 binary module! (version "..libsm64.ModuleVersion..", libsm64 version "..libsm64.LibSM64Version..")")
 			
 			libsm64.SetScaleFactor(libsm64.ScaleFactor)
 			
@@ -380,7 +384,7 @@ if CLIENT then
 		else
 			libsm64 = {}
 			LoadFailure()
-			MsgC(Color(255, 100, 100), "[G64] Couldn't locate the libsm64-gmod module!\n")
+			MsgC(Color(255, 100, 100), "[G64] Couldn't locate the G64 binary module!\n")
 		end
 	end
 
