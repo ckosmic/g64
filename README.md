@@ -2,7 +2,7 @@
 A Garry's Mod addon that uses [libsm64](https://github.com/libsm64/libsm64/) to put a playable Mario in the game.
 
 ## Installation
-- Download G64 from the workshop. Alternatively, clone this repo in your `GarrysMod\garrysmod\addons` folder.
+- Download G64 [from the workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=2814638140). Alternatively, clone this repo in your `GarrysMod\garrysmod\addons` folder.
 - Download the G64 binary module and libsm64 release from the [releases page](https://github.com/ckosmic/g64/releases/latest).
 - Obtain a copy of the US version of the Super Mario 64 ROM in `.z64` format. No, I will not tell you how or where to get this, nor will I send it to you.
 - Now that you have every file you need, extract the release you downloaded from here into your GarrysMod folder: `steamapps\common\GarrysMod`.
