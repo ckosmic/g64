@@ -11,6 +11,10 @@ A Garry's Mod addon that uses [libsm64](https://github.com/libsm64/libsm64/) to 
 
 You're now all set! Spawn Mario from Entities > G64 and if you did everything right, Mario will spawn. Enjoy!
 
+## See More
+Source to my gmod fork of libsm64 can be found here: https://github.com/ckosmic/libsm64/tree/gmod
+Source to the G64 binary module can be found here: https://github.com/ckosmic/libsm64-gmod
+
 ## Credits
 Many features of this addon (like sound and multiplayer) would not be possible without @dylanpdx's [Retro64Mod fork of libsm64](https://github.com/Retro64Mod/libsm64-retro64/). \
 [SysTimeTimers](https://github.com/SnisnotAl/SysTimeTimers) by @SnisnotAI \
