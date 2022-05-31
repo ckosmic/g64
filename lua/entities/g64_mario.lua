@@ -114,6 +114,7 @@ function ENT:Initialize()
 	else
 		self:SetModel("models/hunter/misc/sphere075x075.mdl") -- Easiest circle shadow ever
 		self.Owner:SetMaxHealth(8)
+		if(self.Owner:FlashlightIsOn()) then self.Owner:Flashlight(false) end
 	end
 	
 	self:SetAngles(Angle())
@@ -438,6 +439,12 @@ if (CLIENT) then
 		if(self.hasMetalCap) then
 			render.MaterialOverride(metalMat)
 			self:DrawModel()
+
+			if(self.WingsMesh) then
+				cam.PushModelMatrix( self:GetWorldTransformMatrix() )
+				self.WingsMesh:Draw()
+				cam.PopModelMatrix()
+			end
 			
 			-- Lighting
 			render.OverrideBlend(true, BLEND_ZERO, BLEND_SRC_COLOR, BLENDFUNC_REVERSE_SUBTRACT)
@@ -874,6 +881,7 @@ if (CLIENT) then
 		
 		
 		hook.Add("CalcView", "G64_CALCVIEW" .. self.MarioId, function(ply, origin, angles, fov, znear, zfar)
+			if(gui.IsGameUIVisible() && game.SinglePlayer()) then return self.view end
 			local t = (SysTime() - fixedTime) / tickRate
 			if(stateBuffers[self.MarioId][self.bufferIndex + 1][1] != nil) then
 				self.lerpedPos = LerpVector(t, stateBuffers[self.MarioId][self.bufferIndex + 1][1], stateBuffers[self.MarioId][1-self.bufferIndex + 1][1]) + upOffset
