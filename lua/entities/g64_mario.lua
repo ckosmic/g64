@@ -60,6 +60,7 @@ function ENT:Initialize()
 	
 	self.Owner = self:GetOwner()
 	self.OwnerHealth = self.Owner:Health()
+	self.OwnerMaxHealth = self.Owner:GetMaxHealth()
 	print(self.Owner:Alive())
 	if(self.Owner.IsMario == true || self.Owner:Alive() == false) then self:RemoveInvalid() return end
 	self.Owner.IsMario = true
@@ -154,6 +155,7 @@ function ENT:OnRemove()
 			end
 		else
 			self.Owner:SetObserverMode(OBS_MODE_NONE)
+			self.Owner:SetMaxHealth(self.OwnerMaxHealth)
 			self.Owner:SetHealth(self.OwnerHealth)
 			drive.PlayerStopDriving(self.Owner)
 			
