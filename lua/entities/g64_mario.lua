@@ -60,7 +60,8 @@ function ENT:Initialize()
 	
 	self.Owner = self:GetOwner()
 	self.OwnerHealth = self.Owner:Health()
-	if(self.Owner.IsMario == true) then self:RemoveInvalid() end
+	print(self.Owner:Alive())
+	if(self.Owner.IsMario == true || self.Owner:Alive() == false) then self:RemoveInvalid() return end
 	self.Owner.IsMario = true
 	self.Owner:SetModelScale(0.8, 0)
 	if (CLIENT) then
@@ -178,14 +179,12 @@ if (CLIENT) then
 	local marioRT = GetRenderTargetEx("Mario_Texture", 1024, 64, RT_SIZE_OFFSCREEN, MATERIAL_RT_DEPTH_NONE, 0, 0, IMAGE_FORMAT_RGBA8888)
 	local marioMat = CreateMaterial("g64/libsm64_mario_lighting", "VertexLitGeneric", {
 		["$model"] = "1",
-		["$basetexture"] = "vgui/white",
-		["$translucent"] = "1",
+		["$basetexture"] = "vgui/white"
 	})
 	local vertMat = CreateMaterial("g64/libsm64_mario_verts", "UnlitGeneric", {
 		["$model"] = "1",
 		["$basetexture"] = "vgui/white",
-		["$vertexcolor"] = "1",
-		["$translucent"] = "1",
+		["$vertexcolor"] = "1"
 	})
 	local texMat = CreateMaterial("g64/libsm64_mario_tex", "VertexLitGeneric", {
 		["$model"] = "1",
@@ -525,6 +524,8 @@ if (CLIENT) then
 				-- Player ping is too high or FPS is too low, don't even bother interpolating
 				vertexBuffers[self.MarioId][2] = libsm64.GetMarioTableReference(self.MarioId, 5)
 			end
+
+			self.Owner:SetNoDraw(true)
 		end
 		
 		function self:Think()
@@ -793,6 +794,8 @@ if (CLIENT) then
 				net.WriteUInt(self.marioHealth, 4)
 				net.WriteUInt(self.marioFlags, 32)
 			net.SendToServer()
+
+			self.Owner:SetNoDraw(true)
 		end
 		
 		-- Tick Mario at 30Hz
