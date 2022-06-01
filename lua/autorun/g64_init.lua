@@ -52,20 +52,32 @@ if CLIENT then
 			require("g64")
 			libsm64.ModuleVersion = libsm64.GetModuleVersion()
 			libsm64.LibSM64Version = libsm64.GetLibVersion()
+			libsm64.ModuleOutdated = false 
+			libsm64.LibSM64Outdated = false
 			local libreq = libsm64.CheckLibRequirement()
 
 			if(REQUIRED_MODULE != libsm64.ModuleVersion && REQUIRED_LIBSM64 != libsm64.LibSM64Version) then
-				MsgC(Color(255, 100, 100), "[G64] Your G64 binary module and libsm64 versions are outdated! Please download the latest versions of both from ", Color(86, 173, 255), "https://github.com/ckosmic/g64#installation\n")
-				LoadFailure()
-				return
+				MsgC(Color(255, 100, 100), "[G64] Your G64 binary module and libsm64 versions are outdated! Please download the latest versions of both from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
+				libsm64.ModuleOutdated = true 
+				libsm64.LibSM64Outdated = true
+				if(!game.SinglePlayer()) then -- Don't load libsm64 in multi just in case of incompatibilities
+					LoadFailure()
+					return
+				end
 			elseif(REQUIRED_MODULE != libsm64.ModuleVersion || mismatch == 1) then
-				MsgC(Color(255, 100, 100), "[G64] Your version of the G64 binary module is outdated! Please download the latest version of the G64 binary module from ", Color(86, 173, 255), "https://github.com/ckosmic/g64#installation\n")
-				LoadFailure()
-				return
+				MsgC(Color(255, 100, 100), "[G64] Your version of the G64 binary module is outdated! Please download the latest version of the G64 binary module from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
+				libsm64.ModuleOutdated = true 
+				if(!game.SinglePlayer()) then
+					LoadFailure()
+					return
+				end
 			elseif(REQUIRED_LIBSM64 != libsm64.LibSM64Version || mismatch == 2) then
-				MsgC(Color(255, 100, 100), "[G64] Your version of libsm64 is outdated! Please download the latest version of libsm64 from ", Color(86, 173, 255), "https://github.com/ckosmic/g64#installation\n")
-				LoadFailure()
-				return
+				MsgC(Color(255, 100, 100), "[G64] Your version of libsm64 is outdated! Please download the latest version of libsm64 from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
+				libsm64.LibSM64Outdated = true
+				if(!game.SinglePlayer()) then
+					LoadFailure()
+					return
+				end
 			end
 
 			libsm64.ModuleExists = true

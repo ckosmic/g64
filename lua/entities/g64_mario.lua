@@ -66,6 +66,40 @@ function ENT:Initialize()
 	self.Owner:SetModelScale(0.8, 0)
 	if (CLIENT) then
 		self:SetNoDraw(true)
+
+		-- Check if the binary module or libsm64 are outdated, chat to player once if so
+		if(libsm64.OutdatedNotified == nil) then
+			libsm64.ModuleVersion = libsm64.GetModuleVersion()
+			libsm64.LibSM64Version = libsm64.GetLibVersion()
+			local libreq = libsm64.CheckLibRequirement()
+
+			if(libsm64.ModuleOutdated == true && libsm64.LibSM64Outdated == true) then
+				chat.AddText(Color(255, 100, 100), "[G64] Your G64 binary module and libsm64 versions are outdated! Please download the latest versions of both from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
+				libsm64.OutdatedNotified = true
+				if(!game.SinglePlayer()) then
+					self:RemoveFromClient()
+					return
+				end
+			elseif(libsm64.ModuleOutdated == true) then
+				chat.AddText(Color(255, 100, 100), "[G64] Your version of the G64 binary module is outdated! Please download the latest version of the G64 binary module from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
+				libsm64.OutdatedNotified = true
+				if(!game.SinglePlayer()) then
+					self:RemoveFromClient()
+					return
+				end
+			elseif(libsm64.LibSM64Outdated == true) then
+				chat.AddText(Color(255, 100, 100), "[G64] Your version of libsm64 is outdated! Please download the latest version of libsm64 from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
+				libsm64.OutdatedNotified = true
+				if(!game.SinglePlayer()) then
+					self:RemoveFromClient()
+					return
+				end
+			end
+		end
+
+		-- Prevent Mario from spawning in multiplayer if anything is outdated
+		if(!game.SinglePlayer() && (libsm64.ModuleOutdated == true || libsm64.LibSM64Outdated == true)) then self:RemoveFromClient() return end
+
 		hook.Add("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex(), function()
 			if(libsm64 != nil && libsm64.ModuleExists == false) then
 				chat.AddText(Color(255, 100, 100), "[G64] Couldn't locate the libsm64-gmod binary module!\nPlease place it in ", Color(100, 255, 100), "garrysmod/lua/bin", Color(255, 100, 100), " and reconnect.")
