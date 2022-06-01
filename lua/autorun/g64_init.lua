@@ -29,6 +29,11 @@ if CLIENT then
 	CreateClientConVar("g64_upd_col_flag", "0", true, false)
 	CreateClientConVar("g64_cap_music", "1", true, false)
 
+	local moduleName = "gmcl_g64_win64.dll"
+	--if(jit.arch == "x86") then
+	--	moduleName = "gmcl_g64_win32.dll"
+	--end
+
 	local function LoadFailure()
 		libsm64.ModuleExists = false
 		libsm64.ModuleLoaded = false
@@ -37,7 +42,13 @@ if CLIENT then
 	end
 
 	local function LoadSM64Module()
-		if(file.Exists("lua/bin/gmcl_g64_win64.dll", "MOD")) then
+		if(jit.arch == "x86") then
+			libsm64 = {}
+			LoadFailure()
+			chat.AddText(Color(255, 100, 100), "[G64] You are on 32-bit Garry's Mod. G64 only works in 64-bit. Follow the instructions here to switch to 64-bit: ", Color(86, 173, 255), "https://github.com/ckosmic/g64#installation\n")
+			return
+		end
+		if(file.Exists("lua/bin/" .. moduleName, "MOD")) then
 			require("g64")
 			libsm64.ModuleVersion = libsm64.GetModuleVersion()
 			libsm64.LibSM64Version = libsm64.GetLibVersion()
