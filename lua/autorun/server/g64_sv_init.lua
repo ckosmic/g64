@@ -141,7 +141,7 @@ end)
 
 -- Exit mario if the use key is pressed
 hook.Add("KeyPress", "G64_EXIT_MARIO", function(ply, key)
-	if(IsValid(ply.MarioEnt)) and ( key == IN_USE ) then
+	if(IsValid(ply.MarioEnt)) and ( key == IN_RELOAD ) then
 		ply.MarioEnt:Remove()
 	end
 end)
