@@ -16,7 +16,7 @@ util.AddNetworkString("G64_UPDATEREMOTECOLORS")
 util.AddNetworkString("G64_UPDATEREMOTECAP")
 util.AddNetworkString("G64_REQUESTCOLORS")
 util.AddNetworkString("G64_UPLOADCOLORS")
-util.AddNetworkString("G64_REMOVEINVALIDMARIO")
+util.AddNetworkString("G64_REMOVEINVALIDMARIO")	
 util.AddNetworkString("G64_CHANGESURFACEINFO")
 
 g64sv = {}
@@ -205,7 +205,7 @@ net.Receive("G64_MARIOGROUNDPOUND", function(len, ply)
 		d:SetDamageForce((target:GetPos() - mario:GetPos()) * 15000)
 		target:TakeDamageInfo(d)
 		mario:EmitSound("Flesh.ImpactHard", 75, 100, 1, CHAN_BODY)
-	elseif(target:GetPhysicsObject():IsValid()) then
+	elseif(IsValid(target) and target:GetPhysicsObject():IsValid()) then
 		local phys = target:GetPhysicsObject()
 		local forcedir = target:GetPos() - mario:GetPos()
 		local forcevec = forcedir:GetNormalized() * (300000 / forcedir:Length()) + Vector(0,0,4500)
