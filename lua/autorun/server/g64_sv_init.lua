@@ -210,7 +210,9 @@ net.Receive("G64_MARIOGROUNDPOUND", function(len, ply)
 	local mario = net.ReadEntity()
 	local target = net.ReadEntity()
 	
-	if(IsValid(target) && (target:IsPlayer() || target:IsNPC() || target:Health() > 0)) then
+	if(IsValid(target) == false) then return end
+
+	if(target:IsPlayer() || target:IsNPC() || target:Health() > 0) then
 		local d = DamageInfo()
 		d:SetDamage(math.random(12, 16))
 		d:SetAttacker(mario)
