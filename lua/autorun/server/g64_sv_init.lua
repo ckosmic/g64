@@ -147,6 +147,20 @@ hook.Add("EntityRemoved", "G64_ENTITY_REMOVED", function(ent)
 	end
 end)
 
+local useBlacklist = {
+	prop_vehicle = true,
+	prop_vehicle_airboat = true,
+	prop_vehicle_apc = true,
+	prop_vehicle_cannon = true,
+	prop_vehicle_crane = true,
+	prop_vehicle_driveable = true,
+	prop_vehicle_jeep = true,
+	prop_vehicle_prisoner_pod = true,
+}
+hook.Add("PlayerUse", "G64_PLAYER_USE", function(ply, ent)
+	if(useBlacklist[ent:GetClass()]) then return false end
+end)
+
 net.Receive("G64_UPLOADCOLORS", function(len, ply)
 	if(g64sv.PlayerColors[ply] == nil) then g64sv.PlayerColors[ply] = {} end
 	for i=1, 6 do
@@ -196,7 +210,9 @@ net.Receive("G64_MARIOGROUNDPOUND", function(len, ply)
 	local mario = net.ReadEntity()
 	local target = net.ReadEntity()
 	
-	if(IsValid(target) && (target:IsPlayer() || target:IsNPC() || target:Health() > 0)) then
+	if(IsValid(target) == false) then return end
+
+	if(target:IsPlayer() || target:IsNPC() || target:Health() > 0) then
 		local d = DamageInfo()
 		d:SetDamage(math.random(12, 16))
 		d:SetAttacker(mario)

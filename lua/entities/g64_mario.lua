@@ -160,7 +160,7 @@ function ENT:OnRemove()
 			drive.PlayerStopDriving(self.Owner)
 			
 		end
-		if(self.Owner) then
+		if(IsValid(self.Owner)) then
 			self.Owner:SetModelScale(1, 0)
 			self.Owner.IsMario = false
 		end
@@ -181,18 +181,24 @@ if (CLIENT) then
 	local marioRT = GetRenderTargetEx("Mario_Texture", 1024, 64, RT_SIZE_OFFSCREEN, MATERIAL_RT_DEPTH_NONE, 0, 0, IMAGE_FORMAT_RGBA8888)
 	local marioMat = CreateMaterial("g64/libsm64_mario_lighting", "VertexLitGeneric", {
 		["$model"] = "1",
-		["$basetexture"] = "vgui/white"
+		["$basetexture"] = "vgui/white",
+		["$receiveflashlight"] = "1",
+		Proxies = {
+			["Clamp"] = { min="0.0", max="1.0", srcVar1="$color2", resultVar="$color2" },
+		}
 	})
 	local vertMat = CreateMaterial("g64/libsm64_mario_verts", "UnlitGeneric", {
 		["$model"] = "1",
 		["$basetexture"] = "vgui/white",
-		["$vertexcolor"] = "1"
+		["$vertexcolor"] = "1",
+		["$receiveflashlight"] = "1",
 	})
 	local texMat = CreateMaterial("g64/libsm64_mario_tex", "VertexLitGeneric", {
 		["$model"] = "1",
 		["$decal"] = "1",
 		["$alphatest"] = "1",
 		["$nocull"] = "1",
+		["$receiveflashlight"] = "1",
 	})
 	local debugMat = CreateMaterial("g64/libsm64_debug", "UnlitGeneric", {
 		["$model"] = "1",
@@ -438,27 +444,28 @@ if (CLIENT) then
 		if(self.marioInvincTimer != nil && self.marioInvincTimer >= 3 && self.bufferIndex == 1 && self.marioHealth != 255) then return end -- Hitstun blinking effect
 		
 		if(self.hasMetalCap) then
+			-- Lighting
+			render.MaterialOverride(marioMat)
+			self:DrawModel()
+
+			render.OverrideBlend(true, BLEND_DST_COLOR, BLEND_ZERO, BLENDFUNC_ADD)
 			render.MaterialOverride(metalMat)
 			self:DrawModel()
+			render.OverrideBlend(false)
 
 			if(self.WingsMesh) then
 				cam.PushModelMatrix( self:GetWorldTransformMatrix() )
 				self.WingsMesh:Draw()
 				cam.PopModelMatrix()
 			end
-			
-			-- Lighting
-			render.OverrideBlend(true, BLEND_ZERO, BLEND_SRC_COLOR, BLENDFUNC_REVERSE_SUBTRACT)
-			render.MaterialOverride(marioMat)
-			self:DrawModel()
-			render.OverrideBlend(false)
 		else
-			-- Vertex colors
-			self:DrawModel()
-			
+			render.OverrideDepthEnable(true, true)
 			-- Lighting
-			render.OverrideBlend(true, BLEND_ZERO, BLEND_SRC_COLOR, BLENDFUNC_REVERSE_SUBTRACT)
-			render.MaterialOverride(marioMat)
+			self:DrawModel()
+
+			-- Vertex colors
+			render.OverrideBlend(true, BLEND_DST_COLOR, BLEND_ZERO, BLENDFUNC_ADD)
+			render.MaterialOverride(vertMat)
 			self:DrawModel()
 			render.OverrideBlend(false)
 			
@@ -470,14 +477,14 @@ if (CLIENT) then
 				self.WingsMesh:Draw()
 				cam.PopModelMatrix()
 			end
-		
+			render.OverrideDepthEnable(false)
 		end
 		
 		render.MaterialOverride(nil)
 	end
 	
 	function ENT:GetRenderMesh()
-		return { Mesh = self.Mesh, Material = vertMat }
+		return { Mesh = self.Mesh, Material = marioMat }
 	end
 
 	function ENT:StartRemoteMario()
