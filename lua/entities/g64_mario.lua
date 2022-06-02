@@ -60,10 +60,10 @@ function ENT:Initialize()
 	
 	self.Owner = self:GetOwner()
 	self.OwnerHealth = self.Owner:Health()
-	print(self.Owner:Alive())
 	if(self.Owner.IsMario == true || self.Owner:Alive() == false) then self:RemoveInvalid() return end
 	self.Owner.IsMario = true
 	self.Owner:SetModelScale(0.8, 0)
+	
 	if (CLIENT) then
 		self:SetNoDraw(true)
 
@@ -101,6 +101,7 @@ function ENT:Initialize()
 		if(!game.SinglePlayer() && (libsm64.ModuleOutdated == true || libsm64.LibSM64Outdated == true)) then self:RemoveFromClient() return end
 
 		hook.Add("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex(), function()
+			print(libsm64 != nil, libsm64.ModuleExists, libsm64.ModuleLoaded, libsm64.MapLoaded)
 			if(libsm64 != nil && libsm64.ModuleExists == false) then
 				chat.AddText(Color(255, 100, 100), "[G64] Couldn't locate the libsm64-gmod binary module!\nPlease place it in ", Color(100, 255, 100), "garrysmod/lua/bin", Color(255, 100, 100), " and reconnect.")
 				hook.Remove("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex())
@@ -153,6 +154,12 @@ function ENT:Initialize()
 	end
 	
 	self:SetAngles(Angle())
+
+	hook.Add("ShutDown", "G64_SERVER_SHUTDOWN", function()
+		if SERVER and IsValid(self) then
+			self:Remove()
+		end
+	end)
 	
 	net.Receive("G64_PLAYERREADY", function(len, ply)
 		ply.MarioEnt = self
@@ -187,10 +194,10 @@ function ENT:OnRemove()
 				end
 			end
 		else
+			if(IsValid(self.Owner) == false) then return end
 			self.Owner:SetObserverMode(OBS_MODE_NONE)
 			self.Owner:SetHealth(self.OwnerHealth)
 			drive.PlayerStopDriving(self.Owner)
-			
 		end
 		if(IsValid(self.Owner)) then
 			self.Owner:SetModelScale(1, 0)
@@ -853,6 +860,12 @@ if (CLIENT) then
 			return true
 		end
 
+		net.Receive("G64_DAMAGEMARIO", function(len,ply)
+			local damage = net.ReadUInt(8)
+			local src = Vector(net.ReadInt(16), net.ReadInt(16), net.ReadInt(16))
+			libsm64.MarioTakeDamage(self.MarioId, damage, 0, src)
+		end)
+
 		hook.Add("PostDrawOpaqueRenderables", "G64_RENDER_OPAQUES" .. self.MarioId, function(bDrawingDepth, bDrawingSkybox, isDraw3DSkybox)
 			if (self.MarioId == nil || self.MarioId < 0 || libsm64 == nil || libsm64.ModuleLoaded == false || libsm64.IsGlobalInit() == false || isDraw3DSkybox || bDrawingDepth) then return end
 			
@@ -945,12 +958,6 @@ if (CLIENT) then
 			if(GetConVar("g64_upd_col_flag"):GetBool() == true) then
 				TransmitColors()
 			end
-		end)
-		
-		net.Receive("G64_DAMAGEMARIO", function(len,ply)
-			local damage = net.ReadUInt(8)
-			local src = Vector(net.ReadInt(16), net.ReadInt(16), net.ReadInt(16))
-			libsm64.MarioTakeDamage(self.MarioId, damage, 0, src)
 		end)
 	end
 

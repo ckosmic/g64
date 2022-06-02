@@ -2,6 +2,29 @@ AddCSLuaFile()
 
 include("includes/g64_config.lua")
 
+-- Make level transitions work
+local spawnMarioOnceInited = false
+hook.Add("InitPostEntity", "G64_INIT_POST_ENTITY", function()
+	local marios = ents.FindByClass("g64_mario")
+	for k,v in ipairs(marios) do
+		if(v.Owner:SteamID() == LocalPlayer():SteamID()) then
+			net.Start("G64_RESETINVALIDPLAYER")
+			net.WriteEntity(v)
+			net.SendToServer()
+			v.Owner.IsMario = false
+			v.Owner.SM64LoadedMap = false
+			spawnMarioOnceInited = true
+			InitializeWorld(0)
+		end
+	end
+end)
+
+hook.Add("G64Initialized", "G64_SPAWN_CHANGELEVEL_MARIO", function()
+	if(spawnMarioOnceInited == false) then return end
+	net.Start("G64_SPAWNMARIOATPLAYER")
+	net.SendToServer()
+end)
+
 -- Entity collision system from GWater-V3
 local propQueue = propQueue or {}
 local surfaceIds = surfaceIds or {}

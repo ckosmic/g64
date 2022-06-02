@@ -15,7 +15,7 @@ CreateConVar("g64_wingcap_timer", "1800", FCVAR_CHEAT, "Timer for the wing cap (
 CreateConVar("g64_processdisplacements", "1", FCVAR_CHEAT)
 CreateConVar("g64_processstaticprops", "1", FCVAR_CHEAT)
 
-REQUIRED_LIBSM64 = 1
+REQUIRED_LIBSM64 = 2
 REQUIRED_MODULE = 2
 
 if CLIENT then
@@ -41,11 +41,11 @@ if CLIENT then
 		libsm64.ScaleFactor = 2
 	end
 
-	local function LoadSM64Module()
+	function InitializeWorld(timeout)
 		if(jit.arch == "x86") then
 			libsm64 = {}
 			LoadFailure()
-			chat.AddText(Color(255, 100, 100), "[G64] You are on 32-bit Garry's Mod. G64 only works in 64-bit. Follow the instructions here to switch to 64-bit: ", Color(86, 173, 255), "https://github.com/ckosmic/g64#installation\n")
+			chat.AddText(Color(255, 100, 100), "[G64] You are on 32-bit Garry's Mod. G64 only works in 64-bit mode. Follow the instructions here to switch to 64-bit: ", Color(86, 173, 255), "https://github.com/ckosmic/g64#installation\n")
 			return
 		end
 		if(file.Exists("lua/bin/" .. moduleName, "MOD")) then
@@ -60,7 +60,7 @@ if CLIENT then
 				MsgC(Color(255, 100, 100), "[G64] Your G64 binary module and libsm64 versions are outdated! Please download the latest versions of both from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
 				libsm64.ModuleOutdated = true 
 				libsm64.LibSM64Outdated = true
-				if(!game.SinglePlayer()) then -- Don't load libsm64 in multi just in case of incompatibilities
+				if(!game.SinglePlayer()) then -- Don't load outdated libsm64 in multi just in case of incompatibilities
 					LoadFailure()
 					return
 				end
@@ -88,6 +88,7 @@ if CLIENT then
 			
 			libsm64.SetScaleFactor(libsm64.ScaleFactor)
 			
+			local mapStatus = "[G64] Getting map geometry..."
 			if(!LocalPlayer().SM64LoadedMap) then
 				net.Start("G64_UPLOADCOLORS")
 					for i=1, 6 do
@@ -97,10 +98,21 @@ if CLIENT then
 					end
 				net.SendToServer()
 				
-				timer.Simple(2, function()
+				timer.Simple(timeout, function()
 					net.Start("G64_LOADMAPGEO")
 					print("[G64] Getting map geometry...")
 					net.SendToServer()
+
+					hook.Add("HUDPaint", "G64_DRAW_MAP_STATUS", function()
+						surface.SetFont("Default")
+						w, h = surface.GetTextSize(mapStatus)
+
+						surface.SetDrawColor( 0, 0, 0, 200 )
+						surface.DrawRect( ScrW()-(w+40), ScrH()-50, w+20, 38 )
+						surface.SetTextColor(255, 255, 255)
+						surface.SetTextPos(ScrW()-(w+30), ScrH()-40)
+						surface.DrawText(mapStatus)
+					end)
 				end)
 				
 				local vertices = {}
@@ -205,7 +217,8 @@ if CLIENT then
 					-- Displacements aren't included in map phys geometry,
 					-- so we have to do the next cursed thing: bsp parsing
 					local function ParseDisplacements()
-						print("[G64] Processing displacements...")
+						mapStatus = "[G64] Processing displacements..."
+						print(mapStatus)
 						bsp:LoadDisplacementVertices()
 						for i = 1, #bsp.displacement_vertices, 3 do
 							local vecs = {
@@ -220,7 +233,8 @@ if CLIENT then
 					
 					-- Neither are prop_statics
 					local function ParseStaticProps()
-						print("[G64] Processing static props...")
+						mapStatus = "[G64] Processing static props..."
+						print(mapStatus)
 						
 						local function RotateVertices(verts, ang)
 							local cosa = math.cos(ang.y * 0.017453)
@@ -259,6 +273,7 @@ if CLIENT then
 							
 							return returnVerts
 						end
+						
 						
 						bsp:LoadStaticProps()
 						for i = 1, #bsp.static_props do
@@ -324,6 +339,7 @@ if CLIENT then
 						local endTime = CurTime()
 						local deltaTime = endTime - startTime
 						print("[G64] Received map geometry!")
+						hook.Remove("HUDPaint", "G64_DRAW_MAP_STATUS")
 						
 						libsm64.MapVertices = vertices
 						libsm64.DispVertices = dispVertices
@@ -415,12 +431,11 @@ if CLIENT then
 		hook.Remove("Think", "G64_INITIALIZE")
 		g64config.Load()
 		
-		LoadSM64Module()
+		InitializeWorld(2)
 	end)
 else
 	net.Receive("G64_LOADMAPGEO", function(len, ply)
 		if(!ply.SM64LoadedMap) then
-			print("[G64] Loading map geometry...")
 			LoadMapGeometry(ply)
 		end
 		ply.SM64LoadedMap = true
