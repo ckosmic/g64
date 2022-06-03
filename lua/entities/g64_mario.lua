@@ -101,7 +101,7 @@ function ENT:Initialize()
 		if(!game.SinglePlayer() && (libsm64.ModuleOutdated == true || libsm64.LibSM64Outdated == true)) then self:RemoveFromClient() return end
 
 		hook.Add("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex(), function()
-			print(libsm64 != nil, libsm64.ModuleExists, libsm64.ModuleLoaded, libsm64.MapLoaded)
+			
 			if(libsm64 != nil && libsm64.ModuleExists == false) then
 				chat.AddText(Color(255, 100, 100), "[G64] Couldn't locate the libsm64-gmod binary module!\nPlease place it in ", Color(100, 255, 100), "garrysmod/lua/bin", Color(255, 100, 100), " and reconnect.")
 				hook.Remove("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex())

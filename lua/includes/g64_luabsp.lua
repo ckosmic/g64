@@ -210,6 +210,7 @@ do
         ["rendercolor"] = "Color",
     }
 	local dispIndexToFaceIndex = {}
+    local cycles = 512
 
     local lump_parsers
     lump_parsers = {
@@ -238,6 +239,7 @@ do
                 lump_data.size = lump_data.filelen / 20
 
                 for i=0, lump_data.size - 1 do
+                    if i % cycles == 0 then coroutine.yield() end
                     lump_data.data[i] = {
                         A = fl:ReadFloat(),                -- float | normal vector x component
                         B = fl:ReadFloat(),                -- float | normal vector y component
@@ -252,6 +254,7 @@ do
                 lump_data.data = {}
                 lump_data.size = lump_data.filelen / 32
                 for i=0, lump_data.size - 1 do
+                    if i % cycles == 0 then coroutine.yield() end
                     lump_data.data[i] = {
                         reflectivity = Vector( fl:ReadFloat(), fl:ReadFloat(), fl:ReadFloat() ),
                         nameStringTableID = fl:ReadLong(),
@@ -267,6 +270,7 @@ do
                 lump_data.data = {}
                 lump_data.size = lump_data.filelen / 12
                 for i=0, lump_data.size - 1 do
+                    if i % cycles == 0 then coroutine.yield() end
                     lump_data.data[i] = Vector(
                         fl:ReadFloat(), -- float | x
                         fl:ReadFloat(), -- float | y
@@ -283,6 +287,7 @@ do
                 lump_data.data = {}
                 lump_data.size = lump_data.filelen / 72
                 for i=0, lump_data.size - 1 do
+                    if i % cycles == 0 then coroutine.yield() end
                     lump_data.data[i] = {
                         textureVecs = {
                             { x = fl:ReadFloat(), y = fl:ReadFloat(), z = fl:ReadFloat(), offset = fl:ReadFloat()},
@@ -302,6 +307,7 @@ do
                 lump_data.data = {}
                 lump_data.size = lump_data.filelen / 56
                 for i=0, lump_data.size - 1 do
+                    if i % cycles == 0 then coroutine.yield() end
                     lump_data.data[i] = {
                         planenum = unsigned( fl:ReadShort(), 2 ),                         -- unsigned short | the plane number
                         side = fl:ReadByte(),                              -- byte | faces opposite to the node's plane direction
@@ -328,9 +334,9 @@ do
                             fl:ReadLong(),
                         },
                         origFace = fl:ReadLong(),             -- int | original face this was split from
-                        numPrims = unsigned( fl:ReadShort(), 2 ),                         -- unsigned short | primitives
-                        firstPrimID = unsigned( fl:ReadShort(), 2 ),                      -- unsigned short
-                        smoothingGroups = unsigned( fl:ReadLong(), 4 ),                   -- unsigned int | lightmap smoothing group
+                        numPrims = fl:ReadUShort(),                         -- unsigned short | primitives
+                        firstPrimID = fl:ReadUShort(),                      -- unsigned short
+                        smoothingGroups = fl:ReadULong(),                   -- unsigned int | lightmap smoothing group
                     }
 					if(lump_data.data[i].dispinfo != -1) then
 						dispIndexToFaceIndex[lump_data.data[i].dispinfo] = i
@@ -350,6 +356,7 @@ do
                 lump_data.data = {}
                 lump_data.size = lump_data.filelen / 4
                 for i=0, lump_data.size - 1 do
+                    if i % cycles == 0 then coroutine.yield() end
                     lump_data.data[i] = {
                         unsigned( fl:ReadShort(), 2 ), -- unsigned short | vertex indice 1
                         unsigned( fl:ReadShort(), 2 ), -- unsigned short | vertex indice 2
@@ -361,6 +368,7 @@ do
                 lump_data.data = {}
                 lump_data.size = lump_data.filelen / 4
                 for i=0, lump_data.size - 1 do
+                    if i % cycles == 0 then coroutine.yield() end
                     lump_data.data[i] = fl:ReadLong()
                 end
             end,
@@ -377,6 +385,7 @@ do
                 lump_data.data = {}
                 lump_data.size = lump_data.filelen / 12
                 for i=0, lump_data.size - 1 do
+                    if i % cycles == 0 then coroutine.yield() end
                     lump_data.data[i] = {
                         firstside = fl:ReadLong(),  -- int | first brushside
                         numsides = fl:ReadLong(),   -- int | number of brushsides
@@ -389,8 +398,9 @@ do
                 lump_data.data = {}
                 lump_data.size = lump_data.filelen / 8
                 for i=0, lump_data.size - 1 do
+                    if i % cycles == 0 then coroutine.yield() end
                     lump_data.data[i] = {
-                        planenum = unsigned( fl:ReadShort(), 2 ),             -- unsigned short | facing out of the leaf
+                        planenum = fl:ReadUShort(),             -- unsigned short | facing out of the leaf
                         texinfo =  fl:ReadShort(),  -- short | texture info
                         dispinfo = fl:ReadShort(), -- short | displacement info
                         bevel = fl:ReadShort(),    -- short | is the side a bevel plane?
@@ -429,6 +439,7 @@ do
 					}
 				end
                 for i=0, lump_data.size - 1 do
+                    if i % cycles == 0 then coroutine.yield() end
                     lump_data.data[i] = {
                         startPosition = Vector(fl:ReadFloat(), fl:ReadFloat(), fl:ReadFloat()),
                         dispVertStart = fl:ReadLong(),
@@ -488,6 +499,7 @@ do
 				lump_data.data = {}
 				lump_data.size = lump_data.filelen / 20
 				for i=0, lump_data.size - 1 do
+                    if i % cycles == 0 then coroutine.yield() end
 					lump_data.data[i] = {
 						vec = Vector(fl:ReadFloat(), fl:ReadFloat(), fl:ReadFloat()),
 						dist = fl:ReadFloat(),
@@ -502,6 +514,7 @@ do
                 lump_data.data = {}
                 lump_data.size = fl:ReadLong()
                 for i=1,lump_data.size do
+                    if i % cycles == 0 then coroutine.yield() end
                     lump_data.data[i] = {
                         id      = fl:Read( 4 ),
                         flags   = fl:ReadShort(),
@@ -529,6 +542,7 @@ do
                 lump_data.size = lump_data.filelen / 16
 
                 for i=0, lump_data.size - 1 do
+                    if i % cycles == 0 then coroutine.yield() end
                     local origin = Vector(fl:ReadLong(), fl:ReadLong(), fl:ReadLong())
                     local size = fl:ReadLong()
     
@@ -555,6 +569,7 @@ do
                 lump_data.data = {}
                 lump_data.size = lump_data.filelen / 4
                 for i=0, lump_data.size - 1 do
+                    if i % cycles == 0 then coroutine.yield() end
                     lump_data.data[i] = fl:ReadLong()
                 end
             end,
@@ -646,266 +661,291 @@ do
         return self
     end
 
-    function LuaBSP:LoadLumps( ... )
+    function LuaBSP:LoadLumps( callback, ... )
         local fl = self:GetMapFileHandle()
+        local lumpArgs = {...}
 
-        for k, lump in ipairs( {...} ) do
+        local function LoadLump(index)
+            local lump = lumpArgs[index]
             local lump_data = self.lumps[lump]
             fl:Seek( lump_data.fileofs )
-            lump_parsers[lump]( fl, lump_data )
+            local co
+            hook.Add("Think", "LoadLumpsThink", function()
+                if not co then
+                    co = coroutine.create(lump_parsers[lump])
+                end
+                if coroutine.resume(co, fl, lump_data) == false then
+                    hook.Remove("Think", "LoadLumpsThink")
+                    if(index + 1 > #lumpArgs) then
+                        co = nil
+                        fl:Close()
+                        return callback()
+                    else
+                        return LoadLump(index + 1)
+                    end
+                end
+            end)
         end
 
-        fl:Close()
+        LoadLump(1)
     end
 	
-	function LuaBSP:LoadDisplacementInfos()
-		self:LoadLumps( LUMP_DISPINFO, LUMP_FACES )
-	
-		local fl = self:GetMapFileHandle()
-		local faces = self.lumps[LUMP_FACES]
-		
-		local displacement_infos = {}
-		for _,face_lump in ipairs( faces.data ) do
-			local dispinfoIndex = face_lump.dispinfo
-			if(dispinfoIndex != -1) then
-				local dispInfo = self.lumps[LUMP_DISPINFO]["data"][dispinfoIndex]
-				table.insert(displacement_infos, dispInfo)
-			end
-		end
-		--for _,origface_lump in ipairs( origFaces.data ) do
-		--	local dispinfoIndex = origface_lump.dispinfo
-		--	if(dispinfoIndex != -1) then
-		--		local dispInfo = self.lumps[LUMP_DISPINFO]["data"][dispinfoIndex]
-		--		table.insert(displacement_infos, dispInfo)
-		--	end
-		--end
-		--for _,brushside_lump in ipairs( brushSides.data ) do
-		--	local dispinfoIndex = brushside_lump.dispinfo
-		--	if(dispinfoIndex != -1) then
-		--		local dispInfo = self.lumps[LUMP_DISPINFO]["data"][dispinfoIndex]
-		--		table.insert(displacement_infos, dispInfo)
-		--	end
-		--end
-		self.displacement_infos = displacement_infos
-		
-		fl:Close()
+	function LuaBSP:LoadDisplacementInfos(callback)
+		self:LoadLumps( function()
+            local fl = self:GetMapFileHandle()
+            local faces = self.lumps[LUMP_FACES]
+            
+            local displacement_infos = {}
+            for _,face_lump in ipairs( faces.data ) do
+                local dispinfoIndex = face_lump.dispinfo
+                if(dispinfoIndex != -1) then
+                    local dispInfo = self.lumps[LUMP_DISPINFO]["data"][dispinfoIndex]
+                    table.insert(displacement_infos, dispInfo)
+                end
+            end
+            --for _,origface_lump in ipairs( origFaces.data ) do
+            --	local dispinfoIndex = origface_lump.dispinfo
+            --	if(dispinfoIndex != -1) then
+            --		local dispInfo = self.lumps[LUMP_DISPINFO]["data"][dispinfoIndex]
+            --		table.insert(displacement_infos, dispInfo)
+            --	end
+            --end
+            --for _,brushside_lump in ipairs( brushSides.data ) do
+            --	local dispinfoIndex = brushside_lump.dispinfo
+            --	if(dispinfoIndex != -1) then
+            --		local dispInfo = self.lumps[LUMP_DISPINFO]["data"][dispinfoIndex]
+            --		table.insert(displacement_infos, dispInfo)
+            --	end
+            --end
+            self.displacement_infos = displacement_infos
+            
+            fl:Close()
+            return callback()
+        end, LUMP_DISPINFO, LUMP_FACES )
 	end
 	
-	function LuaBSP:LoadDisplacementVertices()
-		self:LoadLumps( LUMP_DISP_VERTS, LUMP_EDGES, LUMP_SURFEDGES, LUMP_VERTEXES )
-		self:LoadDisplacementInfos()
-		
-		local fl = self:GetMapFileHandle()
-		local worldFaces = self.lumps[LUMP_FACES]["data"]
-		local worldEdges = self.lumps[LUMP_EDGES]["data"]
-		local surfEdges = self.lumps[LUMP_SURFEDGES]["data"]
-		local worldVerts = self.lumps[LUMP_VERTEXES]["data"]
-		local dispVerts = self.lumps[LUMP_DISP_VERTS]["data"]
-		
-		self.displacement_vertices = {}
-		local displacement_vertices = {}
-		local curVert = 0
-		for _,dispinfo in ipairs( self.displacement_infos ) do
-			local power = dispinfo.power
-			local PostSpacing = bit.lshift(1, power) + 1
-			
-			local nVerts = PostSpacing * PostSpacing
-			local nTris = bit.lshift(1, power) * bit.lshift(1, power) * 2
-			local thisDispVerts = {}
-			for i = 0, nVerts do
-				thisDispVerts[i] = dispVerts[i + curVert]
-			end
-			curVert = curVert + nVerts
-				
-			local pointStartIndex = -1
-			local face = worldFaces[dispinfo.mapFace]
-			if(face.numedges <= 4) then
-				local pointStart = dispinfo.startPosition
-			
-				local surfPoints = {}
-				
-				for i = 0, face.numedges - 1 do
-					local eIndex = surfEdges[face.firstedge + i]
-					if(eIndex < 0) then
-						surfPoints[i] = worldVerts[worldEdges[-eIndex][2]]
-					else
-						surfPoints[i] = worldVerts[worldEdges[eIndex][1]]
-					end
-				end
-				
-				if(pointStartIndex == -1) then
-					local minIndex = -1
-					local minDist = 10000000.0
-					for i = 0, 3 do
-						local segment = pointStart - surfPoints[i]
-						local distSq = segment:LengthSqr()
-						if(distSq < minDist) then
-							minDist = distSq
-							minIndex = i
-						end
-					end
-					
-					pointStartIndex = minIndex
-				end
-				
-				local tmpPoints = {}
-				for i = 0, 3 do
-					tmpPoints[i] = surfPoints[i]
-				end
-				for i = 0, 3 do
-					surfPoints[i] = tmpPoints[(i + pointStartIndex) % 4]
-				end
-				
-				local ooInt = 1.0 / (PostSpacing - 1.0)
-				local edgeInt = { (surfPoints[1] - surfPoints[0]) * ooInt, (surfPoints[2] - surfPoints[3]) * ooInt }
-				
-				local vertexGrid = {}
-				for i = 0, PostSpacing-1 do
-					local endPts = { (edgeInt[1] * i) + surfPoints[0], (edgeInt[2] * i) + surfPoints[3] }
-					local seg = (endPts[2] - endPts[1])
-					local segInt = seg * ooInt
-					vertexGrid[i] = {}
-					
-					for j = 0, PostSpacing-1 do
-						local ndx = i * PostSpacing + j
-						local vertexInfo = thisDispVerts[ndx]
-						local vertex = endPts[1] + (segInt * j)
-						vertex = vertex + vertexInfo.vec * vertexInfo.dist
-						vertexGrid[i][j] = vertex
-					end
-				end
-				
-				for x = 0, #vertexGrid-1 do
-					for y = 0, #vertexGrid[x]-1 do
-						local ndx = x * (#vertexGrid-1) + y
-						if(ndx % 2 == 0) then
-							table.insert(displacement_vertices, vertexGrid[x][y])
-							table.insert(displacement_vertices, vertexGrid[x+1][y])
-							table.insert(displacement_vertices, vertexGrid[x+1][y+1])
-							
-							table.insert(displacement_vertices, vertexGrid[x][y])
-							table.insert(displacement_vertices, vertexGrid[x+1][y+1])
-							table.insert(displacement_vertices, vertexGrid[x][y+1])
-						else
-							table.insert(displacement_vertices, vertexGrid[x+1][y])
-							table.insert(displacement_vertices, vertexGrid[x][y+1])
-							table.insert(displacement_vertices, vertexGrid[x][y])
-							
-							table.insert(displacement_vertices, vertexGrid[x+1][y])
-							table.insert(displacement_vertices, vertexGrid[x+1][y+1])
-							table.insert(displacement_vertices, vertexGrid[x][y+1])
-						end
-					end
-				end
-			end
-		end
-		
-		self.displacement_vertices = displacement_vertices
-		fl:Close()
+	function LuaBSP:LoadDisplacementVertices(callback)
+		self:LoadLumps( function()
+            self:LoadDisplacementInfos(function()
+
+                local fl = self:GetMapFileHandle()
+                local worldFaces = self.lumps[LUMP_FACES]["data"]
+                local worldEdges = self.lumps[LUMP_EDGES]["data"]
+                local surfEdges = self.lumps[LUMP_SURFEDGES]["data"]
+                local worldVerts = self.lumps[LUMP_VERTEXES]["data"]
+                local dispVerts = self.lumps[LUMP_DISP_VERTS]["data"]
+                
+                self.displacement_vertices = {}
+                local displacement_vertices = {}
+                local curVert = 0
+                for _,dispinfo in ipairs( self.displacement_infos ) do
+                    local power = dispinfo.power
+                    local PostSpacing = bit.lshift(1, power) + 1
+                    
+                    local nVerts = PostSpacing * PostSpacing
+                    local nTris = bit.lshift(1, power) * bit.lshift(1, power) * 2
+                    local thisDispVerts = {}
+                    for i = 0, nVerts do
+                        thisDispVerts[i] = dispVerts[i + curVert]
+                    end
+                    curVert = curVert + nVerts
+                        
+                    local pointStartIndex = -1
+                    local face = worldFaces[dispinfo.mapFace]
+                    if(face.numedges <= 4) then
+                        local pointStart = dispinfo.startPosition
+                    
+                        local surfPoints = {}
+                        
+                        for i = 0, face.numedges - 1 do
+                            local eIndex = surfEdges[face.firstedge + i]
+                            if(eIndex < 0) then
+                                surfPoints[i] = worldVerts[worldEdges[-eIndex][2]]
+                            else
+                                surfPoints[i] = worldVerts[worldEdges[eIndex][1]]
+                            end
+                        end
+                        
+                        if(pointStartIndex == -1) then
+                            local minIndex = -1
+                            local minDist = 10000000.0
+                            for i = 0, 3 do
+                                local segment = pointStart - surfPoints[i]
+                                local distSq = segment:LengthSqr()
+                                if(distSq < minDist) then
+                                    minDist = distSq
+                                    minIndex = i
+                                end
+                            end
+                            
+                            pointStartIndex = minIndex
+                        end
+                        
+                        local tmpPoints = {}
+                        for i = 0, 3 do
+                            tmpPoints[i] = surfPoints[i]
+                        end
+                        for i = 0, 3 do
+                            surfPoints[i] = tmpPoints[(i + pointStartIndex) % 4]
+                        end
+                        
+                        local ooInt = 1.0 / (PostSpacing - 1.0)
+                        local edgeInt = { (surfPoints[1] - surfPoints[0]) * ooInt, (surfPoints[2] - surfPoints[3]) * ooInt }
+                        
+                        local vertexGrid = {}
+                        for i = 0, PostSpacing-1 do
+                            local endPts = { (edgeInt[1] * i) + surfPoints[0], (edgeInt[2] * i) + surfPoints[3] }
+                            local seg = (endPts[2] - endPts[1])
+                            local segInt = seg * ooInt
+                            vertexGrid[i] = {}
+                            
+                            for j = 0, PostSpacing-1 do
+                                local ndx = i * PostSpacing + j
+                                local vertexInfo = thisDispVerts[ndx]
+                                local vertex = endPts[1] + (segInt * j)
+                                vertex = vertex + vertexInfo.vec * vertexInfo.dist
+                                vertexGrid[i][j] = vertex
+                            end
+                        end
+                        
+                        for x = 0, #vertexGrid-1 do
+                            for y = 0, #vertexGrid[x]-1 do
+                                local ndx = x * (#vertexGrid-1) + y
+                                if(ndx % 2 == 0) then
+                                    table.insert(displacement_vertices, vertexGrid[x][y])
+                                    table.insert(displacement_vertices, vertexGrid[x+1][y])
+                                    table.insert(displacement_vertices, vertexGrid[x+1][y+1])
+                                    
+                                    table.insert(displacement_vertices, vertexGrid[x][y])
+                                    table.insert(displacement_vertices, vertexGrid[x+1][y+1])
+                                    table.insert(displacement_vertices, vertexGrid[x][y+1])
+                                else
+                                    table.insert(displacement_vertices, vertexGrid[x+1][y])
+                                    table.insert(displacement_vertices, vertexGrid[x][y+1])
+                                    table.insert(displacement_vertices, vertexGrid[x][y])
+                                    
+                                    table.insert(displacement_vertices, vertexGrid[x+1][y])
+                                    table.insert(displacement_vertices, vertexGrid[x+1][y+1])
+                                    table.insert(displacement_vertices, vertexGrid[x][y+1])
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                self.displacement_vertices = displacement_vertices
+                fl:Close()
+                return callback()
+
+            end)
+        end, LUMP_DISP_VERTS, LUMP_EDGES, LUMP_SURFEDGES, LUMP_VERTEXES )
 	end
 
-    function LuaBSP:LoadStaticProps()
-        self:LoadLumps( LUMP_GAME_LUMP )
+    function LuaBSP:LoadStaticProps(callback)
+        self:LoadLumps( function() 
 
-        local fl   = self:GetMapFileHandle()
-        local lump = self.lumps[LUMP_GAME_LUMP]
+            local fl   = self:GetMapFileHandle()
+            local lump = self.lumps[LUMP_GAME_LUMP]
 
-        local static_props = {}
-        for _,game_lump in ipairs( lump.data ) do
-            local version = game_lump.version
-            local static_props_entry = {
-                names        = {},
-                leaf         = {},
-                leaf_entries = 0,
-                entries      = {},
-            }
+            local static_props = {}
+            for _,game_lump in ipairs( lump.data ) do
+                local version = game_lump.version
+                local static_props_entry = {
+                    names        = {},
+                    leaf         = {},
+                    leaf_entries = 0,
+                    entries      = {},
+                }
 
-            if not (version >= 4 and version < 12) then continue end
+                if not (version >= 4 and version < 12) then continue end
 
-            fl:Seek( game_lump.fileofs )
+                fl:Seek( game_lump.fileofs )
 
-            local dict_entries = fl:ReadLong()
-            if dict_entries < 0 or dict_entries >= 9999 then continue end
+                local dict_entries = fl:ReadLong()
+                if dict_entries < 0 or dict_entries >= 9999 then continue end
 
-            for i=1,dict_entries do
-                static_props_entry.names[i-1] = fl:Read( 128 ):match( "^[^%z]+" ) or ""
+                for i=1,dict_entries do
+                    static_props_entry.names[i-1] = fl:Read( 128 ):match( "^[^%z]+" ) or ""
+                end
+
+                local leaf_entries = fl:ReadLong()
+                if leaf_entries < 0 then continue end
+
+                static_props_entry.leaf_entries = leaf_entries
+                for i=1,leaf_entries do
+                    static_props_entry.leaf[i] = fl:ReadUShort()
+                end
+
+                local amount = fl:ReadLong()
+                if amount < 0 or amount >= ( 8192 * 2 ) then continue end
+
+                for i=1,amount do
+                    local static_prop = {}
+                    static_props_entry.entries[i] = static_prop
+
+                    static_prop.Origin = Vector( fl:ReadFloat(), fl:ReadFloat(), fl:ReadFloat() )
+                    static_prop.Angles = Angle( fl:ReadFloat(), fl:ReadFloat(), fl:ReadFloat() )
+
+                    if version >= 11 then
+                        static_prop.Scale = fl:ReadShort()
+                    end
+
+                    local _1,_2 = string.byte(fl:Read(2),1,2)
+                    local proptype = _1 + _2 * 256
+
+                    static_prop.PropType = static_props_entry.names[proptype]
+                    if not static_prop.PropType then continue end
+
+                    static_prop.FirstLeaf = fl:ReadShort()
+                    static_prop.LeafCount = fl:ReadShort()
+                    static_prop.Solid     = fl:ReadByte()
+                    static_prop.Flags     = fl:ReadByte()
+                    static_prop.Skin      = fl:ReadLong()
+                    if not static_prop.Skin then continue end
+
+                    static_prop.FadeMinDist    = fl:ReadFloat()
+                    static_prop.FadeMaxDist    = fl:ReadFloat()
+                    static_prop.LightingOrigin = Vector( fl:ReadFloat(), fl:ReadFloat(), fl:ReadFloat() )
+
+                    if version >= 5 then
+                        static_prop.ForcedFadeScale = fl:ReadFloat()
+                    end
+
+                    if version == 6 or version == 7 then
+                        static_prop.MinDXLevel = fl:ReadShort()
+                        static_prop.MaxDXLevel = fl:ReadShort()
+                    end
+
+                    if version >= 8 then
+                        static_prop.MinCPULevel = fl:ReadByte()
+                        static_prop.MaxCPULevel = fl:ReadByte()
+                        static_prop.MinGPULevel = fl:ReadByte()
+                        static_prop.MaxGPULevel = fl:ReadByte()
+                    end
+
+                    if version >= 7 then
+                        static_prop.DiffuseModulation = Color( string.byte( fl:Read( 4 ), 1, 4 ) )
+                    end
+
+                    if version >= 10 then
+                        static_prop.unknown = fl:ReadFloat()
+                    end
+
+                    if version == 9 then
+                        static_prop.DisableX360 = fl:ReadByte() == 1
+                    end
+
+                end
+
+                table.insert( static_props, static_props_entry )
             end
 
-            local leaf_entries = fl:ReadLong()
-            if leaf_entries < 0 then continue end
+            self.static_props = static_props
 
-            static_props_entry.leaf_entries = leaf_entries
-            for i=1,leaf_entries do
-                static_props_entry.leaf[i] = fl:ReadUShort()
-            end
+            fl:Close()
+            return callback()
 
-            local amount = fl:ReadLong()
-            if amount < 0 or amount >= ( 8192 * 2 ) then continue end
-
-            for i=1,amount do
-                local static_prop = {}
-                static_props_entry.entries[i] = static_prop
-
-                static_prop.Origin = Vector( fl:ReadFloat(), fl:ReadFloat(), fl:ReadFloat() )
-                static_prop.Angles = Angle( fl:ReadFloat(), fl:ReadFloat(), fl:ReadFloat() )
-
-                if version >= 11 then
-                    static_prop.Scale = fl:ReadShort()
-                end
-
-                local _1,_2 = string.byte(fl:Read(2),1,2)
-                local proptype = _1 + _2 * 256
-
-                static_prop.PropType = static_props_entry.names[proptype]
-                if not static_prop.PropType then continue end
-
-                static_prop.FirstLeaf = fl:ReadShort()
-                static_prop.LeafCount = fl:ReadShort()
-                static_prop.Solid     = fl:ReadByte()
-                static_prop.Flags     = fl:ReadByte()
-                static_prop.Skin      = fl:ReadLong()
-                if not static_prop.Skin then continue end
-
-                static_prop.FadeMinDist    = fl:ReadFloat()
-                static_prop.FadeMaxDist    = fl:ReadFloat()
-                static_prop.LightingOrigin = Vector( fl:ReadFloat(), fl:ReadFloat(), fl:ReadFloat() )
-
-                if version >= 5 then
-                    static_prop.ForcedFadeScale = fl:ReadFloat()
-                end
-
-                if version == 6 or version == 7 then
-                    static_prop.MinDXLevel = fl:ReadShort()
-                    static_prop.MaxDXLevel = fl:ReadShort()
-                end
-
-                if version >= 8 then
-                    static_prop.MinCPULevel = fl:ReadByte()
-                    static_prop.MaxCPULevel = fl:ReadByte()
-                    static_prop.MinGPULevel = fl:ReadByte()
-                    static_prop.MaxGPULevel = fl:ReadByte()
-                end
-
-                if version >= 7 then
-                    static_prop.DiffuseModulation = Color( string.byte( fl:Read( 4 ), 1, 4 ) )
-                end
-
-                if version >= 10 then
-                    static_prop.unknown = fl:ReadFloat()
-                end
-
-                if version == 9 then
-                    static_prop.DisableX360 = fl:ReadByte() == 1
-                end
-
-            end
-
-            table.insert( static_props, static_props_entry )
-        end
-
-        self.static_props = static_props
-
-        fl:Close()
+        end, LUMP_GAME_LUMP )
     end
 
     function LuaBSP:GetClipBrushes( single_mesh )

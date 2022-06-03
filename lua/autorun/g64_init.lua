@@ -210,110 +210,122 @@ if CLIENT then
 					end
 				end
 				
-				function ParseBSP()
+				function ParseBSP(finished_cb)
 					include("includes/g64_luabsp.lua")
 					local bsp = luabsp.LoadMap(game:GetMap())
 					
 					-- Displacements aren't included in map phys geometry,
 					-- so we have to do the next cursed thing: bsp parsing
-					local function ParseDisplacements()
-						mapStatus = "[G64] Processing displacements..."
-						print(mapStatus)
-						bsp:LoadDisplacementVertices()
-						for i = 1, #bsp.displacement_vertices, 3 do
-							local vecs = {
-								bsp.displacement_vertices[i],
-								bsp.displacement_vertices[i+1],
-								bsp.displacement_vertices[i+2]
-							}
-							
-							PlaceTriangleInChunks(vecs, dispVertices, xDispChunks, yDispChunks)
+					local function ParseDisplacements(callback)
+						if(GetConVar("g64_processdisplacements"):GetBool()) then
+							mapStatus = "[G64] Processing displacements..."
+							print(mapStatus)
+							bsp:LoadDisplacementVertices(function()
+								for i = 1, #bsp.displacement_vertices, 3 do
+									local vecs = {
+										bsp.displacement_vertices[i],
+										bsp.displacement_vertices[i+1],
+										bsp.displacement_vertices[i+2]
+									}
+									
+									PlaceTriangleInChunks(vecs, dispVertices, xDispChunks, yDispChunks)
+								end
+								return callback()
+							end)
+						else
+							return callback()
 						end
 					end
 					
 					-- Neither are prop_statics
-					local function ParseStaticProps()
-						mapStatus = "[G64] Processing static props..."
-						print(mapStatus)
-						
-						local function RotateVertices(verts, ang)
-							local cosa = math.cos(ang.y * 0.017453)
-							local sina = math.sin(ang.y * 0.017453)
+					local function ParseStaticProps(callback)
+						if(GetConVar("g64_processstaticprops"):GetBool()) then
+							mapStatus = "[G64] Processing static props..."
+							print(mapStatus)
 							
-							local cosb = math.cos(ang.x * 0.017453)
-							local sinb = math.sin(ang.x * 0.017453)
-							
-							local cosc = math.cos(ang.z * 0.017453)
-							local sinc = math.sin(ang.z * 0.017453)
-							
-							local Axx = cosa*cosb
-							local Axy = cosa*sinb*sinc - sina*cosc
-							local Axz = cosa*sinb*cosc + sina*sinc
-							
-							local Ayx = sina*cosb
-							local Ayy = sina*sinb*sinc + cosa*cosc
-							local Ayz = sina*sinb*cosc - cosa*sinc
-							
-							local Azx = -sinb
-							local Azy = cosb*sinc
-							local Azz = cosb*cosc
-							
-							local returnVerts = {}
-							for i = 1, #verts do
-								local px = verts[i].x
-								local py = verts[i].y
-								local pz = verts[i].z
+							local function RotateVertices(verts, ang)
+								local cosa = math.cos(ang.y * 0.017453)
+								local sina = math.sin(ang.y * 0.017453)
 								
-								local nx = Axx*px + Axy*py + Axz*pz
-								local ny = Ayx*px + Ayy*py + Ayz*pz
-								local nz = Azx*px + Azy*py + Azz*pz
+								local cosb = math.cos(ang.x * 0.017453)
+								local sinb = math.sin(ang.x * 0.017453)
 								
-								returnVerts[i] = Vector(nx, ny, nz)
+								local cosc = math.cos(ang.z * 0.017453)
+								local sinc = math.sin(ang.z * 0.017453)
+								
+								local Axx = cosa*cosb
+								local Axy = cosa*sinb*sinc - sina*cosc
+								local Axz = cosa*sinb*cosc + sina*sinc
+								
+								local Ayx = sina*cosb
+								local Ayy = sina*sinb*sinc + cosa*cosc
+								local Ayz = sina*sinb*cosc - cosa*sinc
+								
+								local Azx = -sinb
+								local Azy = cosb*sinc
+								local Azz = cosb*cosc
+								
+								local returnVerts = {}
+								for i = 1, #verts do
+									local px = verts[i].x
+									local py = verts[i].y
+									local pz = verts[i].z
+									
+									local nx = Axx*px + Axy*py + Axz*pz
+									local ny = Ayx*px + Ayy*py + Ayz*pz
+									local nz = Azx*px + Azy*py + Azz*pz
+									
+									returnVerts[i] = Vector(nx, ny, nz)
+								end
+								
+								return returnVerts
 							end
 							
-							return returnVerts
-						end
-						
-						
-						bsp:LoadStaticProps()
-						for i = 1, #bsp.static_props do
-							local props = {}
-							for k,v in ipairs(bsp.static_props[i].names) do
-								local csEnt = ents.CreateClientProp(v)
-								props[v] = {}
-								if(csEnt:GetPhysicsObject():IsValid()) then
-									for k,convex in pairs(csEnt:GetPhysicsObject():GetMeshConvexes()) do
-										for k,vertex in pairs(convex) do
-											table.insert(props[v], vertex.pos)
+							
+							bsp:LoadStaticProps(function() 
+								for i = 1, #bsp.static_props do
+									local props = {}
+									for k,v in ipairs(bsp.static_props[i].names) do
+										local csEnt = ents.CreateClientProp(v)
+										props[v] = {}
+										if(csEnt:GetPhysicsObject():IsValid()) then
+											for k,convex in pairs(csEnt:GetPhysicsObject():GetMeshConvexes()) do
+												for k,vertex in pairs(convex) do
+													table.insert(props[v], vertex.pos)
+												end
+											end
+										end
+										csEnt:Remove()
+									end
+									for k,v in ipairs(bsp.static_props[i].entries) do
+										local propVerts = props[v.PropType]
+										if(propVerts != nil && v.Solid == 6) then
+											local rotatedVerts = RotateVertices(propVerts, v.Angles)
+											for j = 1, #rotatedVerts, 3 do
+												local vecs = {
+													rotatedVerts[j],
+													rotatedVerts[j+1],
+													rotatedVerts[j+2]
+												}
+												
+												PlaceTriangleInChunks(vecs, vertices, xChunks, yChunks, v.Origin)
+											end
 										end
 									end
 								end
-								csEnt:Remove()
-							end
-							for k,v in ipairs(bsp.static_props[i].entries) do
-								local propVerts = props[v.PropType]
-								if(propVerts != nil && v.Solid == 6) then
-									local rotatedVerts = RotateVertices(propVerts, v.Angles)
-									for j = 1, #rotatedVerts, 3 do
-										local vecs = {
-											rotatedVerts[j],
-											rotatedVerts[j+1],
-											rotatedVerts[j+2]
-										}
-										
-										PlaceTriangleInChunks(vecs, vertices, xChunks, yChunks, v.Origin)
-									end
-								end
-							end
+								return callback()
+							end)
+						else
+							return callback()
 						end
 					end
 					
-					if(GetConVar("g64_processdisplacements"):GetBool()) then
-						ParseDisplacements()
-					end
-					if(GetConVar("g64_processstaticprops"):GetBool()) then
-						ParseStaticProps()
-					end
+					
+					ParseDisplacements(function() 
+						ParseStaticProps(function()
+							return finished_cb()
+						end)
+					end)
 				end
 				
 				net.Receive("G64_LOADMAPGEO", function(len, ply)
@@ -334,89 +346,91 @@ if CLIENT then
 							PlaceTriangleInChunks(vecs, vertices, xChunks, yChunks)
 						end
 					elseif(msg == 2) then
-						ParseBSP()
-						
-						local endTime = CurTime()
-						local deltaTime = endTime - startTime
-						print("[G64] Received map geometry!")
-						hook.Remove("HUDPaint", "G64_DRAW_MAP_STATUS")
-						
-						libsm64.MapVertices = vertices
-						libsm64.DispVertices = dispVertices
-						libsm64.MapLoaded = true
-						libsm64.AllowedEnts = {
-							prop_physics = true,
-							prop_vehicle = true,
-							prop_vehicle_airboat = true,
-							prop_vehicle_apc = true,
-							prop_vehicle_driveable = true,
-							prop_vehicle_jeep = true,
-							prop_vehicle_prisoner_pod = true,
-							prop_door_rotating = true,
-							gmod_sent_vehicle_fphysics_base = true,
-							--[[npc_alyx = true,
-							npc_antlion = true,
-							npc_antlion_template_maker = true,
-							npc_antlionguard = true,
-							npc_barnacle = true,
-							npc_barney = true,
-							npc_breen = true,
-							npc_citizen = true,
-							npc_combine_camera = true,
-							npc_combine_s = true,
-							npc_combinedropship = true,
-							npc_combinegunship = true,
-							npc_crabsynth = true,
-							npc_cranedriver = true,
-							npc_crow = true,
-							npc_cscanner = true,
-							npc_dog = true,
-							npc_eli = true,
-							npc_fastzombie = true,
-							npc_fisherman = true,
-							npc_gman = true,
-							npc_headcrab = true,
-							npc_headcrab_black = true,
-							npc_headcrab_fast = true,
-							npc_helicopter = true,
-							npc_ichthyosaur = true,
-							npc_kleiner = true,
-							npc_manhack = true,
-							npc_metropolice = true,
-							npc_monk = true,
-							npc_mortarsynth = true,
-							npc_mossman = true,
-							npc_pigeon = true,
-							npc_poisonzombie = true,
-							npc_rollermine = true,
-							npc_seagull = true,
-							npc_sniper = true,
-							npc_stalker = true,
-							npc_strider = true,
-							npc_turret_ceiling = true,
-							npc_turret_floor = true,
-							npc_turret_ground = true,
-							npc_vortigaunt = true,
-							npc_zombie = true,
-							npc_zombie_torso = true,]]
-						}
-						libsm64.AllowedBrushEnts = {
-							func_door = true,
-							func_door_rotating = true,
-							func_movelinear = true,
-							func_tracktrain = true,
-							func_wall = true,
-							func_breakable = true,
-							func_brush = true,
-							func_detail = true,
-							func_lod = true,
-							func_rotating = true,
-							func_physbox = true,
-							func_useableladder = true
-						}
-						libsm64.EntMeshes = {}
-						
-						hook.Run("G64Initialized")
+						ParseBSP(function()
+							
+							local endTime = CurTime()
+							local deltaTime = endTime - startTime
+							print("[G64] Received map geometry!")
+							hook.Remove("HUDPaint", "G64_DRAW_MAP_STATUS")
+							
+							libsm64.MapVertices = vertices
+							libsm64.DispVertices = dispVertices
+							libsm64.MapLoaded = true
+							libsm64.AllowedEnts = {
+								prop_physics = true,
+								prop_vehicle = true,
+								prop_vehicle_airboat = true,
+								prop_vehicle_apc = true,
+								prop_vehicle_driveable = true,
+								prop_vehicle_jeep = true,
+								prop_vehicle_prisoner_pod = true,
+								prop_door_rotating = true,
+								gmod_sent_vehicle_fphysics_base = true,
+								--[[npc_alyx = true,
+								npc_antlion = true,
+								npc_antlion_template_maker = true,
+								npc_antlionguard = true,
+								npc_barnacle = true,
+								npc_barney = true,
+								npc_breen = true,
+								npc_citizen = true,
+								npc_combine_camera = true,
+								npc_combine_s = true,
+								npc_combinedropship = true,
+								npc_combinegunship = true,
+								npc_crabsynth = true,
+								npc_cranedriver = true,
+								npc_crow = true,
+								npc_cscanner = true,
+								npc_dog = true,
+								npc_eli = true,
+								npc_fastzombie = true,
+								npc_fisherman = true,
+								npc_gman = true,
+								npc_headcrab = true,
+								npc_headcrab_black = true,
+								npc_headcrab_fast = true,
+								npc_helicopter = true,
+								npc_ichthyosaur = true,
+								npc_kleiner = true,
+								npc_manhack = true,
+								npc_metropolice = true,
+								npc_monk = true,
+								npc_mortarsynth = true,
+								npc_mossman = true,
+								npc_pigeon = true,
+								npc_poisonzombie = true,
+								npc_rollermine = true,
+								npc_seagull = true,
+								npc_sniper = true,
+								npc_stalker = true,
+								npc_strider = true,
+								npc_turret_ceiling = true,
+								npc_turret_floor = true,
+								npc_turret_ground = true,
+								npc_vortigaunt = true,
+								npc_zombie = true,
+								npc_zombie_torso = true,]]
+							}
+							libsm64.AllowedBrushEnts = {
+								func_door = true,
+								func_door_rotating = true,
+								func_movelinear = true,
+								func_tracktrain = true,
+								func_wall = true,
+								func_breakable = true,
+								func_brush = true,
+								func_detail = true,
+								func_lod = true,
+								func_rotating = true,
+								func_physbox = true,
+								func_useableladder = true
+							}
+							libsm64.EntMeshes = {}
+							
+							hook.Run("G64Initialized")
+
+						end)
 					end
 				end)
 			end
