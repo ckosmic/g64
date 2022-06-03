@@ -98,7 +98,11 @@ function ENT:Initialize()
 		end
 
 		-- Prevent Mario from spawning in multiplayer if anything is outdated
-		if(!game.SinglePlayer() && (libsm64.ModuleOutdated == true || libsm64.LibSM64Outdated == true)) then self:RemoveFromClient() return end
+		if(!game.SinglePlayer() && (libsm64.ModuleOutdated == true || libsm64.LibSM64Outdated == true)) then
+			self:RemoveFromClient()
+			chat.AddText(Color(255, 100, 100), "[G64] Your version of libsm64 or the G64 binary module is outdated! Please download the latest version from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
+			return
+		end
 
 		hook.Add("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex(), function()
 			
@@ -629,6 +633,7 @@ if (CLIENT) then
 
 	function ENT:StartLocalMario()
 		local lPlayer = LocalPlayer()
+		local tickCount = 0
 		
 		local function TransmitColors()
 			net.Start("G64_TRANSMITCOLORS")
@@ -649,6 +654,7 @@ if (CLIENT) then
 			self.MarioId = libsm64.MarioCreate(entPos, false)
 			self.IsRemote = false
 			self:SetRenderBounds(self.Mins, self.Maxs)
+			tickCount = 0
 			
 			vertexBuffers[self.MarioId] = { {}, {} }
 			stateBuffers[self.MarioId] = { {}, {} }
@@ -670,8 +676,6 @@ if (CLIENT) then
 		
 		local hitPos = Vector()
 		local animInfo
-		local tickCount = 0
-		local downVec = Vector(0,0,-400)
 		local function MarioTick()
 			if(self.MarioId == nil) then return end
 			fixedTime = SysTime()
@@ -720,28 +724,6 @@ if (CLIENT) then
 			
 			self.marioCenter = Vector(self.marioPos)
 			self.marioCenter.z = self.marioCenter.z + 50 / scaleFactor
-			
-			self.marioTop = Vector(self.marioCenter)
-			self.marioTop.z = self.marioTop.z + 50 / scaleFactor
-			
-			if(self.marioPos.z*scaleFactor-30 >= self.marioWaterLevel) then
-				local entWaterLevel = self:WaterLevel()
-				self.marioWaterLevel = -100000
-				if(entWaterLevel > 0) then
-					self.marioWaterLevel = self.marioPos.z*scaleFactor-30
-				else
-					local waterTrace = util.TraceLine({
-						start = self.marioTop,
-						endPos = self.marioTop + downVec,
-						filter = { self, lPlayer },
-					})
-					if(bit.band(util.PointContents(waterTrace.HitPos), CONTENTS_WATER) == CONTENTS_WATER) then
-						self.marioWaterLevel = waterTrace.HitPos.z*scaleFactor-30
-					end
-				end
-			end
-			
-			libsm64.SetMarioWaterLevel(self.MarioId, self.marioWaterLevel)
 			
 			if(self.marioParticleFlags != 0) then
 				if(MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_MIST_CIRCLE)) then
@@ -845,6 +827,33 @@ if (CLIENT) then
 
 			self.Owner:SetNoDraw(true)
 		end
+
+		local upVec = Vector(0,0,10000)
+		local downVec = Vector(0,0,-10000)
+		local function FindWaterLevel()
+			local offset = upVec
+			if(self.lerpedPos.z > self.marioWaterLevel && tickCount > 2) then
+				offset = downVec
+			end
+			local tr = util.TraceLine({
+				start = self.lerpedPos,
+				endpos = self.lerpedPos + offset,
+				mask = MASK_WATER
+			})
+			
+			if(tr.Hit == true) then
+				if(offset == downVec and tr.Fraction < 1) then
+					self.marioWaterLevel = tr.HitPos.z
+					libsm64.SetMarioWaterLevel(self.MarioId, self.marioWaterLevel * scaleFactor)
+				elseif(offset == upVec and tr.Hit == true) then
+					self.marioWaterLevel = self.lerpedPos.z + upVec.z * tr.FractionLeftSolid
+					libsm64.SetMarioWaterLevel(self.MarioId, self.marioWaterLevel * scaleFactor)
+				end
+			else
+				self.marioWaterLevel = -100000
+				libsm64.SetMarioWaterLevel(self.MarioId, -100000)
+			end
+		end
 		
 		-- Tick Mario at 30Hz
 		systimetimers.Create("G64_MARIO_TICK" .. self.MarioId, tickRate, 0, function()
@@ -855,7 +864,9 @@ if (CLIENT) then
 			if(!gui.IsGameUIVisible() || !game.SinglePlayer()) then
 				self:GenerateMesh()
 			end
-			--print(collectgarbage("count"))
+
+			FindWaterLevel()
+
 			self:NextThink(CurTime())
 			return true
 		end
@@ -902,7 +913,11 @@ if (CLIENT) then
 			if(self.marioCenter != nil && scaleFactor != nil && GetConVar("g64_debugrays"):GetBool()) then
 				render.DrawLine(self.marioCenter + Vector(0,0,60 / scaleFactor), self.marioCenter + Vector(0,0,60 / scaleFactor) + self.marioForward * (90 / scaleFactor), Color(0, 0, 255))
 				render.DrawWireframeBox(hitPos, Angle(0,0,0), Vector(-16, -16, -(40 / scaleFactor)), Vector(16, 16, 71), Color(255,255,255),true)
+				if(self.marioWaterLevel != nil) then
+					render.DrawLine(Vector(self.lerpedPos[1],self.lerpedPos[2],self.marioWaterLevel), Vector(self.lerpedPos[1],self.lerpedPos[2],self.marioWaterLevel+100), Color(255,0,0))
+				end
 			end
+			
 		end)
 		
 		hook.Add("HUDItemPickedUp", "SM64_ITEM_PICKED_UP" .. self.MarioId, function(itemName)
