@@ -428,6 +428,8 @@ if CLIENT then
 								func_useableladder = true
 							}
 							libsm64.EntMeshes = {}
+							libsm64.TimeScale = 1.0
+							libsm64.SetGlobalVolume(GetConVar("g64_global_volume"):GetFloat())
 							
 							hook.Run("G64Initialized")
 

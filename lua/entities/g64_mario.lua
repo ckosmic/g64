@@ -189,6 +189,7 @@ function ENT:OnRemove()
 				hook.Remove("CreateMove", "G64_CREATEMOVE" .. self.MarioId)
 				hook.Remove("CalcView", "G64_CALCVIEW" .. self.MarioId)
 				hook.Remove("HUDItemPickedUp", "SM64_ITEM_PICKED_UP" .. self.MarioId)
+				hook.Remove("G64AdjustedTimeScale", "G64_ADJUST_TIMESCALE" .. self.MarioId)
 				
 				self.MarioId = -10
 				if(self.Owner != nil && IsValid(self.Owner)) then -- Is null if local player disconnects
@@ -572,7 +573,7 @@ if (CLIENT) then
 			
 			tickCount = tickCount + 1
 			
-			if(GetConVar("g64_interpolation"):GetBool() && (1 / RealFrameTime()) > 33) then
+			if((1 / RealFrameTime()) > 33) then
 				self.bufferIndex = 1 - self.bufferIndex
 			else
 				-- Player ping is too high or FPS is too low, don't even bother interpolating
@@ -606,6 +607,11 @@ if (CLIENT) then
 			if(self.tickTime < 0) then return end
 			tickDeltaTime = SysTime() - self.tickTime
 			MarioTick()
+		end)
+
+		hook.Add("G64AdjustedTimeScale", "G64_ADJUST_TIMESCALE" .. self.MarioId, function(timeScale)
+			tickRate = 1/33 / timeScale
+			systimetimers.Adjust("G64_MARIO_TICK" .. self.MarioId, tickRate)
 		end)
 	end
 	
@@ -657,6 +663,7 @@ if (CLIENT) then
 			self.IsRemote = false
 			self:SetRenderBounds(self.Mins, self.Maxs)
 			tickCount = 0
+			tickRate = 1/33 / libsm64.TimeScale
 			
 			vertexBuffers[self.MarioId] = { {}, {} }
 			stateBuffers[self.MarioId] = { {}, {} }
@@ -877,6 +884,11 @@ if (CLIENT) then
 			local damage = net.ReadUInt(8)
 			local src = Vector(net.ReadInt(16), net.ReadInt(16), net.ReadInt(16))
 			libsm64.MarioTakeDamage(self.MarioId, damage, 0, src)
+		end)
+
+		hook.Add("G64AdjustedTimeScale", "G64_ADJUST_TIMESCALE" .. self.MarioId, function(timeScale)
+			tickRate = 1/33 / timeScale
+			systimetimers.Adjust("G64_MARIO_TICK" .. self.MarioId, tickRate)
 		end)
 
 		hook.Add("PostDrawOpaqueRenderables", "G64_RENDER_OPAQUES" .. self.MarioId, function(bDrawingDepth, bDrawingSkybox, isDraw3DSkybox)
