@@ -167,7 +167,7 @@ local useBlacklist = {
 	prop_vehicle_prisoner_pod = true,
 }
 hook.Add("PlayerUse", "G64_PLAYER_USE", function(ply, ent)
-	if(useBlacklist[ent:GetClass()]) then return false end
+	if(IsValid(ply.MarioEnt) && ply.IsMario == true && useBlacklist[ent:GetClass()]) then return false end
 end)
 
 net.Receive("G64_UPLOADCOLORS", function(len, ply)
