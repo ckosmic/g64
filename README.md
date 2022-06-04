@@ -8,7 +8,8 @@ Note: This requires Windows and 64-bit Garry's Mod.
 - Obtain a copy of the US version of the Super Mario 64 ROM (MD5: `20b854b239203baf6c961b850a4a51a2`, SHA1: `9bef1128717f958171a4afac3ed78ee2bb4e86ce`). No, I will not tell you how or where to get this, nor will I send it to you.
 - Now that you have every file you need, extract the release you downloaded from here into your GarrysMod folder: `steamapps\common\GarrysMod`.
 - To check if you did this correctly, check that both `GarrysMod\bin\win64\sm64.dll` and `GarrysMod\garrysmod\lua\bin\gmcl_g64_win64.dll` exist.
-- Open Gmod **in 64-bit mode** and load a map. Open the spawn menu and under Utilities > G64, set the path to the ROM you obtained.
+- Make sure you're on the 64-bit version of the game **or this will not work at all.** To do this, right click on Garry's Mod in your Steam library and click `Properties...`.  Then click `BETAS` and select `x86-64 - Chromium + 64-bit binaries` from the dropdown.
+- Now that Gmod is in 64-bit mode, open it and load a map. Open the spawn menu and under Utilities > G64, set the path to the ROM you obtained.
 
 You're now all set! Spawn Mario from Entities > G64 and if you did everything right, Mario will spawn. Enjoy!
 

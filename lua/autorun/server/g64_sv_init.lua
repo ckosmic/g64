@@ -18,6 +18,8 @@ util.AddNetworkString("G64_REQUESTCOLORS")
 util.AddNetworkString("G64_UPLOADCOLORS")
 util.AddNetworkString("G64_REMOVEINVALIDMARIO")	
 util.AddNetworkString("G64_CHANGESURFACEINFO")
+util.AddNetworkString("G64_RESETINVALIDPLAYER")
+util.AddNetworkString("G64_SPAWNMARIOATPLAYER")
 
 g64sv = {}
 g64sv.PlayerColors = {}
@@ -139,6 +141,13 @@ hook.Add("PlayerDeath", "G64_PLAYER_DEATH", function(victim, inflictor, attacker
 	end
 end)
 
+-- Exit mario if the use key is pressed
+hook.Add("KeyPress", "G64_EXIT_MARIO", function(ply, key)
+	if(IsValid(ply.MarioEnt)) and ( key == IN_RELOAD ) then
+		ply.MarioEnt:Remove()
+	end
+end)
+
 hook.Add("EntityRemoved", "G64_ENTITY_REMOVED", function(ent)
 	local ply = ent.Owner
 	if(ply != nil && ply:IsValid() && ply:IsPlayer() && ply.IsMario == true) then
@@ -158,7 +167,7 @@ local useBlacklist = {
 	prop_vehicle_prisoner_pod = true,
 }
 hook.Add("PlayerUse", "G64_PLAYER_USE", function(ply, ent)
-	if(useBlacklist[ent:GetClass()]) then return false end
+	if(IsValid(ply.MarioEnt) && ply.IsMario == true && useBlacklist[ent:GetClass()]) then return false end
 end)
 
 net.Receive("G64_UPLOADCOLORS", function(len, ply)
@@ -233,6 +242,24 @@ end)
 net.Receive("G64_REMOVEINVALIDMARIO", function(len, ply)
 	local ent = net.ReadEntity()
 	if(ent != nil) then ent:Remove() end
+end)
+
+net.Receive("G64_RESETINVALIDPLAYER", function(len, ply)
+	local mario = net.ReadEntity()
+	if(mario != nil) then mario:Remove() end
+	ply.SM64LoadedMap = false
+end)
+
+net.Receive("G64_SPAWNMARIOATPLAYER", function(len, ply)
+	local mario = ents.Create("g64_mario")
+	mario:SetPos(ply:GetPos())
+	mario:SetOwner(ply)
+	mario:Spawn()
+	mario:Activate()
+	undo.Create("Mario")
+		undo.AddEntity(mario)
+		undo.SetPlayer(ply)
+	undo.Finish()
 end)
 
 local meta = FindMetaTable("Player")
