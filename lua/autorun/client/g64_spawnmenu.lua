@@ -58,6 +58,17 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		if(GetConVar("g64_interpolation"):GetBool()) then toggleCapMusic:SetValue(true)
 		else toggleCapMusic:SetValue(false) end
 		toggleCapMusic:SetConVar("g64_cap_music")
+
+		local volumeSlider = vgui.Create("DNumSlider")
+		volumeSlider:SetText("Volume")
+		volumeSlider:SetMin(0)
+		volumeSlider:SetMax(1)
+		volumeSlider:SetDecimals(2)
+		volumeSlider:SetConVar("g64_global_volume")
+		volumeSlider:SetDark(true)
+		volumeSlider.OnValueChanged = function(panel, value)
+			if(libsm64 != nil) then libsm64.SetGlobalVolume(value) end
+		end
 		
 		local colHeader = vgui.Create("DLabel")
 		colHeader:SetText("Colors")
@@ -104,6 +115,7 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		panel:AddItem(browseButton)
 		panel:AddItem(toggleInterp)
 		panel:AddItem(toggleCapMusic)
+		panel:AddItem(volumeSlider)
 		panel:AddItem(colHeader)
 		panel:AddItem(colorListView)
 		panel:AddItem(colorMixer)

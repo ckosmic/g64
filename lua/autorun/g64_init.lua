@@ -15,7 +15,7 @@ CreateConVar("g64_wingcap_timer", "1800", FCVAR_CHEAT, "Timer for the wing cap (
 CreateConVar("g64_processdisplacements", "1", FCVAR_CHEAT)
 CreateConVar("g64_processstaticprops", "1", FCVAR_CHEAT)
 
-REQUIRED_LIBSM64 = 2
+REQUIRED_LIBSM64 = 3
 REQUIRED_MODULE = 2
 
 if CLIENT then
@@ -28,6 +28,7 @@ if CLIENT then
 	CreateClientConVar("g64_rompath", "", true, false)
 	CreateClientConVar("g64_upd_col_flag", "0", true, false)
 	CreateClientConVar("g64_cap_music", "1", true, false)
+	CreateClientConVar("g64_global_volume", "1.0", true, false, "", 0.0, 1.0)
 
 	local moduleName = "gmcl_g64_win64.dll"
 	--if(jit.arch == "x86") then

@@ -61,7 +61,6 @@ function ENT:Initialize()
 	self.Owner = self:GetOwner()
 	self.OwnerHealth = self.Owner:Health()
 	self.OwnerMaxHealth = self.Owner:GetMaxHealth()
-	print(self.Owner:Alive())
 	if(self.Owner.IsMario == true || self.Owner:Alive() == false) then self:RemoveInvalid() return end
 	self.Owner.IsMario = true
 	self.Owner:SetModelScale(0.8, 0)
