@@ -12,8 +12,9 @@ PrecacheParticleSystem("mario_fire")
 
 CreateConVar("g64_metalcap_timer", "600", FCVAR_CHEAT, "Timer for the metal cap (default: 600)", 0, 65535)
 CreateConVar("g64_wingcap_timer", "1800", FCVAR_CHEAT, "Timer for the wing cap (default: 1800)", 0, 65535)
-CreateConVar("g64_processdisplacements", "1", FCVAR_CHEAT)
-CreateConVar("g64_processstaticprops", "1", FCVAR_CHEAT)
+CreateConVar("g64_process_displacements", "1", FCVAR_CHEAT)
+CreateConVar("g64_process_static_props", "1", FCVAR_CHEAT)
+CreateConVar("g64_scale_factor", "2.5", bit.bor(FCVAR_CHEAT, FCVAR_REPLICATED), "The scale factor of Mario (default: 2.5)", 0.1, 8)
 
 REQUIRED_LIBSM64 = 3
 REQUIRED_MODULE = 2
@@ -22,8 +23,8 @@ if CLIENT then
 
 	include("includes/g64_config.lua")
 
-	CreateClientConVar("g64_debugcollision", "0", true, false)
-	CreateClientConVar("g64_debugrays", "0", true, false)
+	CreateClientConVar("g64_debug_collision", "0", true, false)
+	CreateClientConVar("g64_debug_rays", "0", true, false)
 	CreateClientConVar("g64_interpolation", "1", true, false)
 	CreateClientConVar("g64_rompath", "", true, false)
 	CreateClientConVar("g64_upd_col_flag", "0", true, false)
@@ -84,7 +85,7 @@ if CLIENT then
 			libsm64.ModuleExists = true
 			libsm64.ModuleLoaded = true
 			libsm64.MapLoaded = false
-			libsm64.ScaleFactor = 2.5
+			libsm64.ScaleFactor = GetConVar("g64_scale_factor"):GetFloat()
 			print("[G64] Loaded G64 binary module! (version "..libsm64.ModuleVersion..", libsm64 version "..libsm64.LibSM64Version..")")
 			
 			libsm64.SetScaleFactor(libsm64.ScaleFactor)
@@ -141,7 +142,7 @@ if CLIENT then
 					yChunks = math.ceil(yDelta / tileSize)
 					xDispChunks = math.ceil(xDelta / dispTileSize)
 					yDispChunks = math.ceil(yDelta / dispTileSize)
-					if(GetConVar("g64_debugcollision"):GetBool()) then
+					if(GetConVar("g64_debug_collision"):GetBool()) then
 						print("[G64] Chunks: ", xChunks, yChunks)
 						print("[G64] World bounds: ", worldMin.x, worldMin.y, worldMax.x, worldMax.y)
 					end
@@ -218,7 +219,7 @@ if CLIENT then
 					-- Displacements aren't included in map phys geometry,
 					-- so we have to do the next cursed thing: bsp parsing
 					local function ParseDisplacements(callback)
-						if(GetConVar("g64_processdisplacements"):GetBool()) then
+						if(GetConVar("g64_process_displacements"):GetBool()) then
 							mapStatus = "[G64] Processing displacements..."
 							print(mapStatus)
 							bsp:LoadDisplacementVertices(function()
@@ -240,7 +241,7 @@ if CLIENT then
 					
 					-- Neither are prop_statics
 					local function ParseStaticProps(callback)
-						if(GetConVar("g64_processstaticprops"):GetBool()) then
+						if(GetConVar("g64_process_static_props"):GetBool()) then
 							mapStatus = "[G64] Processing static props..."
 							print(mapStatus)
 							

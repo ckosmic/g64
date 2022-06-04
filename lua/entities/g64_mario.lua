@@ -291,7 +291,6 @@ if (CLIENT) then
 	local marioDispChunk = Vector()
 	local prevMarioChunk = Vector()
 	local prevMarioDispChunk = Vector()
-	local scaleFactor = 1
 	local prevWaterLevel = 0
 
 	local attackTimer = 0
@@ -460,7 +459,6 @@ if (CLIENT) then
 		yChunks = libsm64.YChunks
 		xDispChunks = libsm64.XDispChunks
 		yDispChunks = libsm64.YDispChunks
-		scaleFactor = libsm64.ScaleFactor
 		xOffset = worldMin.x + 16384
 		yOffset = worldMin.y + 16384
 		self.marioPos = Vector()
@@ -505,7 +503,6 @@ if (CLIENT) then
 				cam.PopModelMatrix()
 			end
 		else
-			render.OverrideDepthEnable(true, true)
 			-- Lighting
 			self:DrawModel()
 
@@ -523,7 +520,6 @@ if (CLIENT) then
 				self.WingsMesh:Draw()
 				cam.PopModelMatrix()
 			end
-			render.OverrideDepthEnable(false)
 		end
 		
 		render.MaterialOverride(nil)
@@ -539,7 +535,7 @@ if (CLIENT) then
 		if(self.MarioId < 0 || self.MarioId == nil) then
 			self:InitSomeVariables()
 			local entPos = self:GetPos()
-			self.tickedPos = -entPos*scaleFactor
+			self.tickedPos = -entPos*libsm64.ScaleFactor
 			self.MarioId = libsm64.MarioCreate(entPos, true)
 			self.IsRemote = true
 			self:SetRenderBounds(self.Mins, self.Maxs)
@@ -634,7 +630,7 @@ if (CLIENT) then
 		sent.marioFlags = net.ReadUInt(32)
 		
 		libsm64.SetMarioPosition(sent.MarioId, sent:GetPos())
-		sent.tickedPos = -sent:GetPos()*scaleFactor
+		sent.tickedPos = -sent:GetPos()*libsm64.ScaleFactor
 		
 		sent.tickTime = SysTime()
 	end)
@@ -724,7 +720,7 @@ if (CLIENT) then
 				prevMarioChunk.y = marioChunk.y
 				prevMarioDispChunk.x = marioDispChunk.x
 				prevMarioDispChunk.y = marioDispChunk.y
-				if(GetConVar("g64_debugcollision"):GetBool()) then
+				if(GetConVar("g64_debug_collision"):GetBool()) then
 					print("[G64] Mario World Chunk: ", marioChunk.x .. ", " .. marioChunk.y)
 					print("[G64] Mario Disp Chunk: ", marioDispChunk.x .. ", " .. marioDispChunk.y)
 				end
@@ -732,7 +728,7 @@ if (CLIENT) then
 			end
 			
 			self.marioCenter = Vector(self.marioPos)
-			self.marioCenter.z = self.marioCenter.z + 50 / scaleFactor
+			self.marioCenter.z = self.marioCenter.z + 50 / libsm64.ScaleFactor
 			
 			if(self.marioParticleFlags != 0) then
 				if(MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_MIST_CIRCLE)) then
@@ -748,7 +744,7 @@ if (CLIENT) then
 				if(MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_VERTICAL_STAR) || MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_TRIANGLE)) then
 					local tr = util.TraceLine({
 						start = self.marioCenter,
-						endpos = self.marioCenter + self.marioForward * (140 / scaleFactor),
+						endpos = self.marioCenter + self.marioForward * (140 / libsm64.ScaleFactor),
 						filter = { self, lPlayer },
 					})
 					local ang = tr.HitNormal:Angle()
@@ -776,15 +772,15 @@ if (CLIENT) then
 					net.Start("G64_MARIOTRACE")
 						net.WriteEntity(self)
 						net.WriteVector(self.marioCenter)
-						net.WriteFloat(scaleFactor)
+						net.WriteFloat(libsm64.ScaleFactor)
 						net.WriteVector(self.marioForward)
 					net.SendToServer()
-					if(GetConVar("g64_debugrays"):GetBool()) then
+					if(GetConVar("g64_debug_rays"):GetBool()) then
 						local tr = util.TraceHull({
 							start = self.marioCenter,
-							endpos = self.marioCenter + self.marioForward * (90 / scaleFactor),
+							endpos = self.marioCenter + self.marioForward * (90 / libsm64.ScaleFactor),
 							filter = { self, lPlayer },
-							mins = Vector(-16, -16, -(40 / scaleFactor)),
+							mins = Vector(-16, -16, -(40 / libsm64.ScaleFactor)),
 							maxs = Vector(16, 16, 71),
 							mask = MASK_SHOT_HULL
 						})
@@ -853,14 +849,14 @@ if (CLIENT) then
 			if(tr.Hit == true) then
 				if(offset == downVec and tr.Fraction < 1) then
 					self.marioWaterLevel = tr.HitPos.z
-					libsm64.SetMarioWaterLevel(self.MarioId, self.marioWaterLevel * scaleFactor)
+					libsm64.SetMarioWaterLevel(self.MarioId, self.marioWaterLevel * libsm64.ScaleFactor)
 				elseif(offset == upVec and tr.Hit == true) then
 					self.marioWaterLevel = self.lerpedPos.z + upVec.z * tr.FractionLeftSolid
-					libsm64.SetMarioWaterLevel(self.MarioId, self.marioWaterLevel * scaleFactor)
+					libsm64.SetMarioWaterLevel(self.MarioId, self.marioWaterLevel * libsm64.ScaleFactor)
 				end
 			else
-				self.marioWaterLevel = -100000
-				libsm64.SetMarioWaterLevel(self.MarioId, -100000)
+				self.marioWaterLevel = -1000000
+				libsm64.SetMarioWaterLevel(self.MarioId, -1000000)
 			end
 		end
 		
@@ -895,7 +891,7 @@ if (CLIENT) then
 			if (self.MarioId == nil || self.MarioId < 0 || libsm64 == nil || libsm64.ModuleLoaded == false || libsm64.IsGlobalInit() == false || isDraw3DSkybox || bDrawingDepth) then return end
 			
 			-- Debug map collision
-			if(GetConVar("g64_debugcollision"):GetBool() && marioChunk.x != nil && marioChunk.y != nil) then
+			if(GetConVar("g64_debug_collision"):GetBool() && marioChunk.x != nil && marioChunk.y != nil) then
 				local mapverts = libsm64.MapVertices[marioChunk.x][marioChunk.y]
 				local mapvertcount = #mapverts
 				if mapvertcount == 0 then return end
@@ -924,9 +920,9 @@ if (CLIENT) then
 				mesh.End()
 			end
 			
-			if(self.marioCenter != nil && scaleFactor != nil && GetConVar("g64_debugrays"):GetBool()) then
-				render.DrawLine(self.marioCenter + Vector(0,0,60 / scaleFactor), self.marioCenter + Vector(0,0,60 / scaleFactor) + self.marioForward * (90 / scaleFactor), Color(0, 0, 255))
-				render.DrawWireframeBox(hitPos, Angle(0,0,0), Vector(-16, -16, -(40 / scaleFactor)), Vector(16, 16, 71), Color(255,255,255),true)
+			if(GetConVar("g64_debug_rays"):GetBool() && self.marioCenter != nil && libsm64.ScaleFactor != nil) then
+				render.DrawLine(self.marioCenter + Vector(0,0,60 / libsm64.ScaleFactor), self.marioCenter + Vector(0,0,60 / libsm64.ScaleFactor) + self.marioForward * (90 / libsm64.ScaleFactor), Color(0, 0, 255))
+				render.DrawWireframeBox(hitPos, Angle(0,0,0), Vector(-16, -16, -(40 / libsm64.ScaleFactor)), Vector(16, 16, 71), Color(255,255,255),true)
 				if(self.marioWaterLevel != nil) then
 					render.DrawLine(Vector(self.lerpedPos[1],self.lerpedPos[2],self.marioWaterLevel), Vector(self.lerpedPos[1],self.lerpedPos[2],self.marioWaterLevel+100), Color(255,0,0))
 				end
@@ -944,7 +940,7 @@ if (CLIENT) then
 		
 		-- From drive_base.lua
 		CalcView_ThirdPerson = function( view, dist, hullsize, ply, entityfilter )
-			local neworigin = view.origin - ply:EyeAngles():Forward() * dist
+			local neworigin = view.origin - ply:EyeAngles():Forward() * dist / libsm64.ScaleFactor
 			
 			if ( hullsize && hullsize > 0 ) then
 				local tr = util.TraceHull( {
@@ -976,10 +972,10 @@ if (CLIENT) then
 			end
 			
 			self.view.origin = self.lerpedPos
-			self.view.origin.z = self.view.origin.z + 50 / scaleFactor
+			self.view.origin.z = self.view.origin.z + 50 / libsm64.ScaleFactor
 			self.view.angles = angles
 			
-			CalcView_ThirdPerson(self.view, 200, 2, ply, { self, ply })
+			CalcView_ThirdPerson(self.view, 500, 2, ply, { self, ply })
 			return self.view
 		end)
 		

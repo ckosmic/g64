@@ -164,6 +164,7 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	end)
 	
 	local prevTimeScale = -1.0
+	local prevScaleFactor = -1.0
 	hook.Add("Think", "G64_UPDATE_COLLISION", function()
 		for k,v in ipairs(libsm64.EntMeshes) do
 			local trashCan = {}
@@ -206,6 +207,12 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 			libsm64.TimeScale = GetConVar("host_timescale"):GetFloat()
 			prevTimeScale = libsm64.TimeScale
 			hook.Call("G64AdjustedTimeScale", nil, libsm64.TimeScale)
+		end
+
+		if prevScaleFactor != GetConVar("g64_scale_factor"):GetFloat() then
+			libsm64.ScaleFactor = GetConVar("g64_scale_factor"):GetFloat()
+			prevScaleFactor = libsm64.ScaleFactor
+			libsm64.SetScaleFactor(libsm64.ScaleFactor)
 		end
 	end)
 	
