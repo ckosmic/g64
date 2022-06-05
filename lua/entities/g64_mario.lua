@@ -733,7 +733,6 @@ if (CLIENT) then
 			if(self.marioParticleFlags != 0) then
 				if(MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_MIST_CIRCLE)) then
 					ParticleEffect("ground_pound", self.marioPos, Angle())
-					ParticleEffect("mario_fire", self.marioPos, Angle())
 				end
 				if(MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_DUST)) then
 					ParticleEffect("mario_dust", self.marioPos, Angle())
