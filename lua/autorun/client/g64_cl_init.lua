@@ -29,6 +29,8 @@ end)
 local propQueue = propQueue or {}
 local surfaceIds = surfaceIds or {}
 
+local allEnts = allEnts or {}
+
 function SeqArgs(priority, seqId)
 	return bit.bor(bit.lshift(priority, 8), seqId)
 end
@@ -44,6 +46,15 @@ function PlayTrack(seqId)
 		StopAllTracks()
 		libsm64.PlayMusic(0, SeqArgs(4, seqId), 0)
 	end
+end
+
+function GetSoundArg(soundTable)
+	if(type(soundTable) == "table") then
+		return libsm64.GetSoundArg(soundTable[1], soundTable[2], soundTable[3], soundTable[4], soundTable[5])
+	elseif(type(soundTable) == "number") then
+		return soundTable
+	end
+	return nil
 end
 
 local meta = FindMetaTable("Player")
@@ -157,10 +168,12 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	local props = ents.GetAll()
 	for k,v in ipairs(props) do
 		libsm64.AddColliderToQueue(v)
+		allEnts[#allEnts + 1] = v
 	end
 	
 	hook.Add("OnEntityCreated", "G64_ENTITY_CREATED", function(ent)
 		libsm64.AddColliderToQueue(ent)
+		allEnts[#allEnts + 1] = ent
 	end)
 	
 	local prevTimeScale = -1.0
@@ -201,6 +214,22 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 			if(!propQueue[1]) then break end
 			AddPropMesh(propQueue[1])
 			table.remove(propQueue, 1)
+		end
+
+		local frameTime = FrameTime()
+		local trashCan = {}
+		for k,v in ipairs(allEnts) do
+			if(IsValid(v)) then
+				if(v.HitStunTimer == nil) then
+					v.HitStunTimer = 0
+				end
+				v.HitStunTimer = v.HitStunTimer - frameTime
+			else
+				table.insert(trashCan, k)
+			end
+		end
+		for i=1,#trashCan do
+			table.remove(allEnts, trashCan[i])
 		end
 
 		if prevTimeScale != GetConVar("host_timescale"):GetFloat() then

@@ -325,18 +325,12 @@ if (CLIENT) then
 	end
 
 	function ENT:MarioIsAttacking()
-		if(MarioHasFlag(self.marioAction, g64types.SM64MarioActionFlags.ACT_FLAG_ATTACKING) &&
-			  (self.marioAction == g64types.SM64MarioAction.ACT_PUNCHING ||
-			   self.marioAction == g64types.SM64MarioAction.ACT_JUMP_KICK ||
-			   self.marioAction == g64types.SM64MarioAction.ACT_GROUND_POUND_LAND ||
-			   self.marioAction == g64types.SM64MarioAction.ACT_SLIDE_KICK ||
-			   self.marioAction == g64types.SM64MarioAction.ACT_SLIDE_KICK_SLIDE ||
-			   self.marioAction == g64types.SM64MarioAction.ACT_DIVE ||
-			   self.marioAction == g64types.SM64MarioAction.ACT_DIVE_SLIDE ||
-			   self.marioAction == g64types.SM64MarioAction.ACT_MOVE_PUNCHING)) then
-			return self.marioAction
+		if(MarioHasFlag(self.marioFlags, 0x00100000) || 
+		   MarioHasFlag(self.marioFlags, 0x00200000) ||
+		   MarioHasFlag(self.marioFlags, 0x00400000)) then
+			return true
 		else
-			return nil
+			return false
 		end
 	end
 
@@ -755,49 +749,68 @@ if (CLIENT) then
 			end
 			
 			self.marioAction = marioState[5]
-			if(attackTimer < SysTime() && self:MarioIsAttacking() != nil) then
-				attackTimer = SysTime() + 0.6
-				if(self.marioAction == g64types.SM64MarioAction.ACT_GROUND_POUND_LAND) then
-					local surroundingEnts = ents.FindInSphere(self.marioPos, 75)
-					for k,v in ipairs(surroundingEnts) do
-						if(v != self && v != lPlayer) then
-							net.Start("G64_MARIOGROUNDPOUND")
-								net.WriteEntity(self)
-								net.WriteEntity(v)
-							net.SendToServer()
-						end
-					end
-				else
-					net.Start("G64_MARIOTRACE")
-						net.WriteEntity(self)
-						net.WriteVector(self.marioCenter)
-						net.WriteFloat(libsm64.ScaleFactor)
-						net.WriteVector(self.marioForward)
-					net.SendToServer()
-					if(GetConVar("g64_debug_rays"):GetBool()) then
-						local tr = util.TraceHull({
-							start = self.marioCenter,
-							endpos = self.marioCenter + self.marioForward * (90 / libsm64.ScaleFactor),
-							filter = { self, lPlayer },
-							mins = Vector(-16, -16, -(40 / libsm64.ScaleFactor)),
-							maxs = Vector(16, 16, 71),
-							mask = MASK_SHOT_HULL
-						})
-						hitPos = tr.HitPos
+
+			if(self:MarioIsAttacking()) then
+				local tr = util.TraceHull({
+					start = self.marioCenter,
+					endpos = self.marioCenter + self.marioForward * (90 / libsm64.ScaleFactor),
+					filter = { self, lPlayer },
+					mins = Vector(-16, -16, -(40 / libsm64.ScaleFactor)),
+					maxs = Vector(16, 16, 71),
+					mask = MASK_SHOT_HULL
+				})
+				hitPos = tr.HitPos
+				if(IsValid(tr.Entity) && tr.Hit && tr.Entity.HitStunTimer < 0) then
+					local min, max = tr.Entity:WorldSpaceAABB()
+					if(libsm64.MarioAttack(self.MarioId, tr.HitPos, max.z - min.z) == true) then
+						tr.Entity.HitStunTimer = 0.25
+						local ang = tr.HitNormal:Angle()
+						ParticleEffect("mario_vert_star", tr.HitPos, ang)
+						net.Start("G64_DAMAGEENTITY")
+							net.WriteEntity(self)
+							net.WriteEntity(tr.Entity)
+							net.WriteVector(self.marioForward)
+							net.WriteVector(tr.HitPos)
+							net.WriteUInt(15, 8)
+						net.SendToServer()
 					end
 				end
 			end
 			
-			local tr = util.TraceLine({
+			local tr = util.TraceHull({
 				start = self.marioCenter,
-				endpos = self.marioCenter + Vector(0, 0, -400),
-				filter = { self, lPlayer }
+				endpos = self.marioCenter + Vector(0, 0, -50),
+				filter = function(ent) return (ent != self.Owner && (ent:IsNPC() || ent:IsPlayer())) end,
+				mins = Vector(-16, -16, -4),
+				maxs = Vector(16, 16, 4),
+				mask = MASK_SHOT_HULL
 			})
 			if(tr.Entity.G64SurfaceType == nil && tr.Entity.G64TerrainType == nil) then
 				libsm64.SetMarioFloorOverrides(self.MarioId, MatTypeToTerrainType(tr.MatType), g64types.SM64SurfaceType.SURFACE_DEFAULT)
 			else
 				-- Turn off overrides
 				libsm64.SetMarioFloorOverrides(self.MarioId, 0x7, 0x39)
+			end
+			if(IsValid(tr.Entity) && tr.Hit && tr.Entity.HitStunTimer < 0) then
+				local min, max = tr.Entity:WorldSpaceAABB()
+				if(libsm64.MarioAttack(self.MarioId, tr.Entity:GetPos(), max.z - min.z) == true) then
+					tr.Entity.HitStunTimer = 0.25
+					local dmg = 24
+					if(self.marioAction == g64types.SM64MarioAction.ACT_GROUND_POUND) then
+						libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_TRIPLE_JUMP)
+						local soundArg = GetSoundArg(g64types.SM64SoundTable.SOUND_ACTION_HIT)
+						libsm64.PlaySoundGlobal(soundArg)
+						dmg = 32
+					end
+					ParticleEffect("mario_horiz_star", self.marioPos, Angle())
+					net.Start("G64_DAMAGEENTITY")
+						net.WriteEntity(self)
+						net.WriteEntity(tr.Entity)
+						net.WriteVector(-self:GetUp())
+						net.WriteVector(tr.HitPos)
+						net.WriteUInt(24, 8)
+					net.SendToServer()
+				end
 			end
 			
 			if(self.EnableWingCap == true) then
