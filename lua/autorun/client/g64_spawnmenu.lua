@@ -40,6 +40,15 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 				end
 			end
 		end
+
+		local toggleUpdates = vgui.Create("DCheckBoxLabel")
+		toggleUpdates:SetText("Auto-update")
+		toggleUpdates:SetTextColor(Color(0,0,0))
+		toggleUpdates:SetTooltip([[Allows the addon to update libsm64
+		and the G64 module upon disconnect.]])
+		if(GetConVar("g64_auto_update"):GetBool()) then toggleUpdates:SetValue(true)
+		else toggleUpdates:SetValue(false) end
+		toggleUpdates:SetConVar("g64_auto_update")
 		
 		local toggleInterp = vgui.Create("DCheckBoxLabel")
 		toggleInterp:SetText("Enable mesh interpolation")
@@ -113,6 +122,7 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		panel:AddItem(genHeader)
 		panel:AddItem(filePathEntry)
 		panel:AddItem(browseButton)
+		panel:AddItem(toggleUpdates)
 		panel:AddItem(toggleInterp)
 		panel:AddItem(toggleCapMusic)
 		panel:AddItem(volumeSlider)

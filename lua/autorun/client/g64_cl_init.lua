@@ -243,6 +243,8 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 			prevScaleFactor = libsm64.ScaleFactor
 			libsm64.SetScaleFactor(libsm64.ScaleFactor)
 		end
+
+		libsm64.SetAutoUpdateState(GetConVar("g64_auto_update"):GetBool())
 	end)
 	
 	hook.Add("PreCleanupMap", "G64_CLEANUP_ENTITIES", function()
@@ -253,6 +255,34 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 		end
 		table.Empty(libsm64.EntMeshes)
 	end)
+
+	local request = {
+		url = "https://api.github.com/repos/ckosmic/g64/releases",
+		method = "GET",
+		success = function(code, body, headers)
+			local response = util.JSONToTable(body)
+			local tag = response[1].tag_name
+			local version = string.sub(tag, 2, #tag)
+			local lVersion = libsm64.GetPackageVersion()
+			local result = libsm64.CompareVersions(lVersion, version)
+			if(result == 0) then
+				if(GetConVar("g64_auto_update"):GetBool() == true) then
+					MsgC(Color(255, 100, 100), "[G64] Your libsm64-g64 package is outdated! Please reconnect to auto-download the newest version.\n")
+				else
+					MsgC(Color(255, 100, 100), "[G64] Your libsm64-g64 package is outdated! Please download the latest version from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest", Color(255, 100, 100), " or turn auto-updates on in the G64 settings menu.\n")
+				end
+				libsm64.PackageOutdated = true
+			elseif(result == 1) then
+				print("[G64] You have a higher version of libsm64-g64 than what's on GitHub. How?\n")
+			elseif(result == 2) then
+				print("[G64] libsm64-g64 package is up to date.\n")
+			end
+		end,
+		failed = function(reason)
+			print("Failed to get update information: ", reason)
+		end
+	}
+	if(libsm64.GetPackageVersion != nil) then HTTP(request) end
 end)
 
 hook.Add("ShutDown", "G64_SHUTTING_DOWN", function()

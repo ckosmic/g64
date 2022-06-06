@@ -69,7 +69,7 @@ function ENT:Initialize()
 		self:SetNoDraw(true)
 
 		-- Check if the binary module or libsm64 are outdated, chat to player once if so
-		if(libsm64.OutdatedNotified == nil) then
+		if(libsm64.OutdatedNotified == nil && libsm64.GetModuleVersion != nil) then
 			libsm64.ModuleVersion = libsm64.GetModuleVersion()
 			libsm64.LibSM64Version = libsm64.GetLibVersion()
 			local libreq = libsm64.CheckLibRequirement()
@@ -99,10 +99,22 @@ function ENT:Initialize()
 		end
 
 		-- Prevent Mario from spawning in multiplayer if anything is outdated
-		if(!game.SinglePlayer() && (libsm64.ModuleOutdated == true || libsm64.LibSM64Outdated == true)) then
-			self:RemoveFromClient()
-			chat.AddText(Color(255, 100, 100), "[G64] Your version of libsm64 or the G64 binary module is outdated! Please download the latest version from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
-			return
+		if(!game.SinglePlayer() && (libsm64.ModuleOutdated == true || libsm64.LibSM64Outdated == true || libsm64.GetModuleVersion == nil || libsm64.PackageOutdated == true)) then
+			if(libsm64.GetModuleVersion == nil) then
+				if(libsm64.PackageOutdated == true) then
+					self:RemoveFromClient()
+					if(GetConVar("g64_auto_update"):GetBool() == true) then
+						chat.AddText(Color(255, 100, 100), "[G64] Your libsm64-g64 package is outdated! Please reconnect to auto-download the newest version.\n")
+					else
+						chat.AddText(Color(255, 100, 100), "[G64] Your libsm64-g64 package is outdated! Please download the latest version from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest", Color(255, 100, 100), " or turn auto-updates on in the G64 settings menu.\n")
+					end
+					return
+				end
+			else
+				self:RemoveFromClient()
+				chat.AddText(Color(255, 100, 100), "[G64] Your version of libsm64 or the G64 binary module is outdated! Please download the latest version from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
+				return
+			end
 		end
 
 		hook.Add("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex(), function()

@@ -30,6 +30,7 @@ if CLIENT then
 	CreateClientConVar("g64_upd_col_flag", "0", true, false)
 	CreateClientConVar("g64_cap_music", "1", true, false)
 	CreateClientConVar("g64_global_volume", "1.0", true, false, "", 0.0, 1.0)
+	CreateClientConVar("g64_auto_update", "0", true, false)
 
 	local moduleName = "gmcl_g64_win64.dll"
 	--if(jit.arch == "x86") then
@@ -52,41 +53,29 @@ if CLIENT then
 		end
 		if(file.Exists("lua/bin/" .. moduleName, "MOD")) then
 			require("g64")
-			libsm64.ModuleVersion = libsm64.GetModuleVersion()
-			libsm64.LibSM64Version = libsm64.GetLibVersion()
-			libsm64.ModuleOutdated = false 
-			libsm64.LibSM64Outdated = false
-			local libreq = libsm64.CheckLibRequirement()
 
-			if(REQUIRED_MODULE != libsm64.ModuleVersion && REQUIRED_LIBSM64 != libsm64.LibSM64Version) then
-				MsgC(Color(255, 100, 100), "[G64] Your G64 binary module and libsm64 versions are outdated! Please download the latest versions of both from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
+			if(libsm64.GetPackageVersion == nil) then
+				-- Pre-auto-updater check
+				chat.AddText(Color(255, 100, 100), "[G64] Your G64 binary module and libsm64 versions are outdated! Please download the latest versions of both from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest", Color(255, 100, 100), ". (This next version comes with an optional auto-updater so that's this process will be way easier after you update.)\n")
 				libsm64.ModuleOutdated = true 
 				libsm64.LibSM64Outdated = true
 				if(!game.SinglePlayer()) then -- Don't load outdated libsm64 in multi just in case of incompatibilities
 					LoadFailure()
 					return
 				end
-			elseif(REQUIRED_MODULE != libsm64.ModuleVersion || mismatch == 1) then
-				MsgC(Color(255, 100, 100), "[G64] Your version of the G64 binary module is outdated! Please download the latest version of the G64 binary module from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
-				libsm64.ModuleOutdated = true 
-				if(!game.SinglePlayer()) then
-					LoadFailure()
-					return
-				end
-			elseif(REQUIRED_LIBSM64 != libsm64.LibSM64Version || mismatch == 2) then
-				MsgC(Color(255, 100, 100), "[G64] Your version of libsm64 is outdated! Please download the latest version of libsm64 from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
-				libsm64.LibSM64Outdated = true
-				if(!game.SinglePlayer()) then
-					LoadFailure()
-					return
-				end
+			else
+				-- Post auto-updater check
+				libsm64.PackageVersion = libsm64.GetPackageVersion()
+				libsm64.LibSM64Version = libsm64.GetLibVersion()
+				libsm64.PackageOutdated = false 
+
+				print("[G64] Loaded G64 binary module! (Package version "..libsm64.PackageVersion..")")
 			end
 
 			libsm64.ModuleExists = true
 			libsm64.ModuleLoaded = true
 			libsm64.MapLoaded = false
 			libsm64.ScaleFactor = GetConVar("g64_scale_factor"):GetFloat()
-			print("[G64] Loaded G64 binary module! (version "..libsm64.ModuleVersion..", libsm64 version "..libsm64.LibSM64Version..")")
 			
 			libsm64.SetScaleFactor(libsm64.ScaleFactor)
 			
