@@ -10,7 +10,6 @@ util.AddNetworkString("G64_TRANSMITCAP")
 util.AddNetworkString("G64_DAMAGEMARIO")
 util.AddNetworkString("G64_INITLOCALCLIENT")
 util.AddNetworkString("G64_TICKREMOTEMARIO")
-util.AddNetworkString("G64_MARIOGROUNDPOUND")
 util.AddNetworkString("G64_TRANSMITCOLORS")
 util.AddNetworkString("G64_UPDATEREMOTECOLORS")
 util.AddNetworkString("G64_UPDATEREMOTECAP")
@@ -195,7 +194,6 @@ net.Receive("G64_DAMAGEENTITY", function(len, ply)
 		d:SetDamagePosition(hitPos)
 
 		victim:TakeDamageInfo(d)
-		--mario:EmitSound("Flesh.ImpactHard", 75, 100, 1, CHAN_BODY)
 	elseif(victim:GetPhysicsObject():IsValid()) then
 		local phys = victim:GetPhysicsObject()
 		
@@ -204,30 +202,6 @@ net.Receive("G64_DAMAGEENTITY", function(len, ply)
 	
 	if(ply:GetUseEntity() != NULL) then
 		ply:GetUseEntity():Use(mario, mario, USE_ON)
-	end
-end)
-
-net.Receive("G64_MARIOGROUNDPOUND", function(len, ply)
-	local mario = net.ReadEntity()
-	local target = net.ReadEntity()
-	
-	if(IsValid(target) == false) then return end
-
-	if(target:IsPlayer() || target:IsNPC() || target:Health() > 0) then
-		local d = DamageInfo()
-		d:SetDamage(math.random(12, 16))
-		d:SetAttacker(mario)
-		d:SetInflictor(mario)
-		d:SetDamageType(DMG_GENERIC)
-		d:SetDamageForce((target:GetPos() - mario:GetPos()) * 15000)
-		target:TakeDamageInfo(d)
-		mario:EmitSound("Flesh.ImpactHard", 75, 100, 1, CHAN_BODY)
-	elseif(target:GetPhysicsObject():IsValid()) then
-		local phys = target:GetPhysicsObject()
-		local forcedir = target:GetPos() - mario:GetPos()
-		local forcevec = forcedir:GetNormalized() * (300000 / forcedir:Length()) + Vector(0,0,4500)
-		
-		phys:ApplyForceCenter(forcevec)
 	end
 end)
 

@@ -675,6 +675,9 @@ if (CLIENT) then
 		
 		local hitPos = Vector()
 		local animInfo
+		local trDownVec = Vector(0, 0, -125/libsm64.ScaleFactor)
+		local trMins = Vector(-16, -16, -4)
+		local trMaxs = Vector(16, 16, 4)
 		local function MarioTick()
 			if(self.MarioId == nil) then return end
 			fixedTime = SysTime()
@@ -760,12 +763,29 @@ if (CLIENT) then
 					mask = MASK_SHOT_HULL
 				})
 				hitPos = tr.HitPos
-				if(IsValid(tr.Entity) && tr.Hit && tr.Entity.HitStunTimer < 0) then
+				if(IsValid(tr.Entity) && tr.Hit && tr.Entity.HitStunTimer != nil && tr.Entity.HitStunTimer < 0) then
 					local min, max = tr.Entity:WorldSpaceAABB()
-					if(libsm64.MarioAttack(self.MarioId, tr.HitPos, max.z - min.z) == true) then
+					if(tr.Entity:IsNPC() == true || tr.Entity:IsPlayer() == true) then
+						if(libsm64.MarioAttack(self.MarioId, tr.HitPos, max.z - min.z) == true) then
+							local dmg = 15
+							if(self.marioAction == g64types.SM64MarioAction.ACT_JUMP_KICK) then
+								dmg = 22
+							end
+							tr.Entity.HitStunTimer = 0.25
+							local ang = tr.HitNormal:Angle()
+							ParticleEffect("mario_vert_star", tr.HitPos, ang)
+							net.Start("G64_DAMAGEENTITY")
+								net.WriteEntity(self)
+								net.WriteEntity(tr.Entity)
+								net.WriteVector(self.marioForward)
+								net.WriteVector(tr.HitPos)
+								net.WriteUInt(dmg, 8)
+							net.SendToServer()
+						end
+					else
 						tr.Entity.HitStunTimer = 0.25
-						local ang = tr.HitNormal:Angle()
-						ParticleEffect("mario_vert_star", tr.HitPos, ang)
+						local soundArg = GetSoundArg(g64types.SM64SoundTable.SOUND_ACTION_HIT)
+						libsm64.PlaySoundGlobal(soundArg)
 						net.Start("G64_DAMAGEENTITY")
 							net.WriteEntity(self)
 							net.WriteEntity(tr.Entity)
@@ -779,10 +799,10 @@ if (CLIENT) then
 			
 			local tr = util.TraceHull({
 				start = self.marioCenter,
-				endpos = self.marioCenter + Vector(0, 0, -50),
-				filter = function(ent) return (ent != self.Owner && (ent:IsNPC() || ent:IsPlayer())) end,
-				mins = Vector(-16, -16, -4),
-				maxs = Vector(16, 16, 4),
+				endpos = self.marioCenter + trDownVec,
+				filter = function(ent) return (ent != self.Owner && ent:Health() > 0) end,
+				mins = trMins,
+				maxs = trMaxs,
 				mask = MASK_SHOT_HULL
 			})
 			if(tr.Entity.G64SurfaceType == nil && tr.Entity.G64TerrainType == nil) then
@@ -791,24 +811,37 @@ if (CLIENT) then
 				-- Turn off overrides
 				libsm64.SetMarioFloorOverrides(self.MarioId, 0x7, 0x39)
 			end
-			if(IsValid(tr.Entity) && tr.Hit && tr.Entity.HitStunTimer < 0) then
+			if(IsValid(tr.Entity) && tr.Hit && tr.Entity.HitStunTimer != nil && tr.Entity.HitStunTimer < 0) then
 				local min, max = tr.Entity:WorldSpaceAABB()
-				if(libsm64.MarioAttack(self.MarioId, tr.Entity:GetPos(), max.z - min.z) == true) then
-					tr.Entity.HitStunTimer = 0.25
-					local dmg = 24
-					if(self.marioAction == g64types.SM64MarioAction.ACT_GROUND_POUND) then
-						libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_TRIPLE_JUMP)
-						local soundArg = GetSoundArg(g64types.SM64SoundTable.SOUND_ACTION_HIT)
-						libsm64.PlaySoundGlobal(soundArg)
-						dmg = 32
+				if(tr.Entity:IsNPC() == true || tr.Entity:IsPlayer() == true) then
+					if(libsm64.MarioAttack(self.MarioId, tr.Entity:GetPos(), max.z - min.z) == true) then
+						tr.Entity.HitStunTimer = 0.25
+						local dmg = 24
+						if(self.marioAction == g64types.SM64MarioAction.ACT_GROUND_POUND) then
+							libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_TRIPLE_JUMP)
+							local soundArg = GetSoundArg(g64types.SM64SoundTable.SOUND_ACTION_HIT)
+							libsm64.PlaySoundGlobal(soundArg)
+							dmg = 32
+						end
+						ParticleEffect("mario_horiz_star", self.marioPos, Angle())
+						net.Start("G64_DAMAGEENTITY")
+							net.WriteEntity(self)
+							net.WriteEntity(tr.Entity)
+							net.WriteVector(-self:GetUp())
+							net.WriteVector(tr.HitPos)
+							net.WriteUInt(24, 8)
+						net.SendToServer()
 					end
-					ParticleEffect("mario_horiz_star", self.marioPos, Angle())
+				elseif(self.marioAction == g64types.SM64MarioAction.ACT_GROUND_POUND) then
+					tr.Entity.HitStunTimer = 0.25
+					local soundArg = GetSoundArg(g64types.SM64SoundTable.SOUND_GENERAL_POUND_ROCK)
+					libsm64.PlaySoundGlobal(soundArg)
 					net.Start("G64_DAMAGEENTITY")
 						net.WriteEntity(self)
 						net.WriteEntity(tr.Entity)
-						net.WriteVector(-self:GetUp())
+						net.WriteVector(self.marioForward)
 						net.WriteVector(tr.HitPos)
-						net.WriteUInt(24, 8)
+						net.WriteUInt(32, 8)
 					net.SendToServer()
 				end
 			end
