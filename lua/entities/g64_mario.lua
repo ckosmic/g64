@@ -176,6 +176,10 @@ function ENT:Initialize()
 	end)
 end
 
+function MarioHasFlag(mask, flag)
+	return (bit.band(mask, flag) != 0)
+end
+
 function ENT:OnRemove()
 	if(self.Invalid == false) then
 		if (CLIENT) then
@@ -194,7 +198,7 @@ function ENT:OnRemove()
 				self.MarioId = -10
 				if(self.Owner != nil && IsValid(self.Owner)) then -- Is null if local player disconnects
 					self.Owner:SetNoDraw(false)
-					if(self.Owner == LocalPlayer()) then
+					if(self.Owner == LocalPlayer() && (MarioHasFlag(self.marioFlags, 0x00000008) || MarioHasFlag(self.marioFlags, 0x00000004))) then
 						StopAllTracks()
 					end
 				end
@@ -318,10 +322,6 @@ if (CLIENT) then
 		chunk.x = math.min(math.floor((point.x - xOffset + 16384) / xDelta * xDispChunks) + 1, xDispChunks)
 		chunk.y = math.min(math.floor((point.y - yOffset + 16384) / yDelta * yDispChunks) + 1, yDispChunks)
 		return chunk
-	end
-
-	local function MarioHasFlag(mask, flag)
-		return (bit.band(mask, flag) != 0)
 	end
 
 	function ENT:MarioIsAttacking()
