@@ -28,6 +28,8 @@ end)
 -- Entity collision system from GWater-V3
 local propQueue = propQueue or {}
 local surfaceIds = surfaceIds or {}
+local objects = objects or {}
+local objectIds = objectIds or {}
 
 local allEnts = allEnts or {}
 
@@ -169,11 +171,27 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	for k,v in ipairs(props) do
 		libsm64.AddColliderToQueue(v)
 		allEnts[#allEnts + 1] = v
+		if(v:IsNPC()) then
+			local min, max = v:WorldSpaceAABB()
+			local hbHeight = max.z - min.z
+			local hbRad = max.x - min.x
+			v.G64ObjectId = libsm64.ObjectCreate(v:GetPos(), hbHeight, hbRad)
+			objectIds[#objectIds + 1] = v.G64ObjectId
+			objects[#objects + 1] = v
+		end
 	end
 	
 	hook.Add("OnEntityCreated", "G64_ENTITY_CREATED", function(ent)
 		libsm64.AddColliderToQueue(ent)
 		allEnts[#allEnts + 1] = ent
+		if(ent:IsNPC()) then
+			local min, max = ent:WorldSpaceAABB()
+			local hbHeight = max.z - min.z
+			local hbRad = max.x - min.x
+			ent.G64ObjectId = libsm64.ObjectCreate(ent:GetPos(), hbHeight, hbRad)
+			objectIds[#objectIds + 1] = ent.G64ObjectId
+			objects[#objects + 1] = ent
+		end
 	end)
 	
 	local prevTimeScale = -1.0
@@ -209,27 +227,39 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 				table.remove(libsm64.EntMeshes, trashCan[i])
 			end
 		end
-		
+
 		for i = 1, 8 do
 			if(!propQueue[1]) then break end
 			AddPropMesh(propQueue[1])
 			table.remove(propQueue, 1)
 		end
 
+		-- Update NPC/Player collision
+		for i=#objects,1,-1 do
+			v = objects[i]
+			if(!IsValid(v)) then
+				if(objectIds[i] != nil && objectIds[i] > 0) then
+					libsm64.ObjectDelete(objectIds[i])
+					table.remove(objectIds, i)
+					table.remove(objects, i)
+				end
+			else
+				libsm64.ObjectMove(v.G64ObjectId, v:GetPos())
+			end
+		end
+
+		-- Update entity attack timers
 		local frameTime = FrameTime()
-		local trashCan = {}
-		for k,v in ipairs(allEnts) do
+		for i=#allEnts,1,-1 do
+			v = allEnts[i]
 			if(IsValid(v)) then
 				if(v.HitStunTimer == nil) then
 					v.HitStunTimer = 0
 				end
 				v.HitStunTimer = v.HitStunTimer - frameTime
 			else
-				table.insert(trashCan, k)
+				table.remove(allEnts, i)
 			end
-		end
-		for i=1,#trashCan do
-			table.remove(allEnts, trashCan[i])
 		end
 
 		if prevTimeScale != GetConVar("host_timescale"):GetFloat() then

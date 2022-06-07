@@ -183,7 +183,7 @@ net.Receive("G64_DAMAGEENTITY", function(len, ply)
 	local hitPos = net.ReadVector()
 	local minDmg = net.ReadUInt(8)
 
-	if(!IsValid(victim)) then return end
+	if(!IsValid(victim) || !IsValid(mario)) then return end
 	if(victim:IsNPC() || victim:IsPlayer() || victim:Health() > 0) then
 		local d = DamageInfo()
 		d:SetDamage(math.random(minDmg, minDmg+10))
