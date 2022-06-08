@@ -267,6 +267,29 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 			libsm64.ScaleFactor = GetConVar("g64_scale_factor"):GetFloat()
 			prevScaleFactor = libsm64.ScaleFactor
 			libsm64.SetScaleFactor(libsm64.ScaleFactor)
+			local newBounds = 160 / libsm64.ScaleFactor
+			local marioEnt = LocalPlayer().MarioEnt
+			if(IsValid(marioEnt) == true) then
+				marioEnt.Maxs.x = newBounds
+				marioEnt.Maxs.y = newBounds
+				marioEnt.Maxs.z = newBounds
+				marioEnt.Mins.x = -newBounds
+				marioEnt.Mins.y = -newBounds
+				marioEnt.Mins.z = -newBounds
+			end
+
+			-- Recreate prop collisions since their vertices depend on scale factor
+			for k,v in ipairs(libsm64.EntMeshes) do
+				for j,surfaceId in pairs(surfaceIds[k]) do
+					libsm64.SurfaceObjectDelete(surfaceId)
+				end
+			end
+			table.Empty(libsm64.EntMeshes)
+
+			local props = ents.GetAll()
+			for k,v in ipairs(props) do
+				ProcessNewEntity(v)
+			end
 		end
 
 		libsm64.SetAutoUpdateState(GetConVar("g64_auto_update"):GetBool())

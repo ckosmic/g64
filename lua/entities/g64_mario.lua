@@ -156,6 +156,9 @@ function ENT:Initialize()
 					end
 				end
 				
+				self.Mins = Vector(-160/libsm64.ScaleFactor, -160/libsm64.ScaleFactor, -160/libsm64.ScaleFactor)
+				self.Maxs = Vector( 160/libsm64.ScaleFactor,  160/libsm64.ScaleFactor,  160/libsm64.ScaleFactor)
+
 				if(self.Owner == LocalPlayer()) then
 				-- Only runs on the player who spawned Mario
 					net.Start("G64_PLAYERREADY")
