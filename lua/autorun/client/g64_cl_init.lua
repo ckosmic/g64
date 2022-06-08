@@ -276,6 +276,10 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 				marioEnt.Mins.x = -newBounds
 				marioEnt.Mins.y = -newBounds
 				marioEnt.Mins.z = -newBounds
+
+				net.Start("G64_REMOVEINVALIDMARIO")
+				net.WriteEntity(marioEnt)
+				net.SendToServer()
 			end
 
 			-- Recreate prop collisions since their vertices depend on scale factor

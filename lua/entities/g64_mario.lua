@@ -63,8 +63,8 @@ function ENT:Initialize()
 	self.Owner = self:GetOwner()
 	self.OwnerHealth = self.Owner:Health()
 	self.OwnerMaxHealth = self.Owner:GetMaxHealth()
-	-- Remove Mario if already spawned or if the player is dead
-	if(IsValid(self.Owner.MarioEnt) || self.Owner:Alive() == false) then self:RemoveInvalid() return end
+	-- Remove Mario if already spawned or if the player is dead or driving
+	if(IsValid(self.Owner.MarioEnt) || self.Owner:Alive() == false || self.Owner:InVehicle()) then self:RemoveInvalid() return end
 	self.Owner.IsMario = true
 	self.Owner:SetModelScale(0.8, 0)
 	
@@ -734,6 +734,7 @@ if (CLIENT) then
 			--	libsm64.SetMarioPosition(self.MarioId, lPlayer:GetPos())
 			--end
 			
+
 			marioChunk = PointInChunk(self.marioPos)
 			marioDispChunk = PointInDispChunk(self.marioPos)
 			if(marioChunk.x ~= prevMarioChunk.x || marioChunk.y ~= prevMarioChunk.y || marioDispChunk.x ~= prevMarioDispChunk.x || marioDispChunk.y ~= prevMarioDispChunk.y) then
