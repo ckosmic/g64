@@ -166,25 +166,11 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 			table.remove(libsm64.EntMeshes, entIndex)
 		end
 	end
-	
-	local props = ents.GetAll()
-	for k,v in ipairs(props) do
-		libsm64.AddColliderToQueue(v)
-		allEnts[#allEnts + 1] = v
-		if(v:IsNPC()) then
-			local min, max = v:WorldSpaceAABB()
-			local hbHeight = max.z - min.z
-			local hbRad = max.x - min.x
-			v.G64ObjectId = libsm64.ObjectCreate(v:GetPos(), hbHeight, hbRad)
-			objectIds[#objectIds + 1] = v.G64ObjectId
-			objects[#objects + 1] = v
-		end
-	end
-	
-	hook.Add("OnEntityCreated", "G64_ENTITY_CREATED", function(ent)
+
+	local function ProcessNewEntity(ent)
 		libsm64.AddColliderToQueue(ent)
 		allEnts[#allEnts + 1] = ent
-		if(ent:IsNPC()) then
+		if((ent:IsNPC() || ent:IsPlayer()) && ent != LocalPlayer() && ent:GetClass() != "g64_mario") then
 			local min, max = ent:WorldSpaceAABB()
 			local hbHeight = max.z - min.z
 			local hbRad = max.x - min.x
@@ -192,6 +178,15 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 			objectIds[#objectIds + 1] = ent.G64ObjectId
 			objects[#objects + 1] = ent
 		end
+	end
+	
+	local props = ents.GetAll()
+	for k,v in ipairs(props) do
+		ProcessNewEntity(v)
+	end
+	
+	hook.Add("OnEntityCreated", "G64_ENTITY_CREATED", function(ent)
+		ProcessNewEntity(ent)
 	end)
 	
 	local prevTimeScale = -1.0
