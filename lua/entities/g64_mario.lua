@@ -210,14 +210,11 @@ function ENT:OnRemove()
 			if(libsm64 != nil && libsm64.ModuleLoaded) then
 				libsm64.MarioDelete(self.MarioId)
 				
-				if(systimetimers.Exists("G64_MARIO_TICK" .. self.MarioId)) then
-					systimetimers.Remove("G64_MARIO_TICK" .. self.MarioId)
-				end
+				hook.Remove("G64GameTick", "G64_MARIO_TICK" .. self.MarioId)
 				hook.Remove("PostDrawOpaqueRenderables", "G64_RENDER_OPAQUES" .. self.MarioId)
 				hook.Remove("CreateMove", "G64_CREATEMOVE" .. self.MarioId)
 				hook.Remove("CalcView", "G64_CALCVIEW" .. self.MarioId)
 				hook.Remove("HUDItemPickedUp", "SM64_ITEM_PICKED_UP" .. self.MarioId)
-				hook.Remove("G64AdjustedTimeScale", "G64_ADJUST_TIMESCALE" .. self.MarioId)
 				
 				self.MarioId = -10
 				if(self.Owner != nil && IsValid(self.Owner)) then -- Is null if local player disconnects
@@ -247,7 +244,6 @@ end
 
 
 
-local tickRate = 1/33
 local upOffset = Vector(0,0,5)
 
 if (CLIENT) then
@@ -401,7 +397,7 @@ if (CLIENT) then
 		end
 		self.WingsMesh = Mesh()
 		
-		local t = (SysTime() - fixedTime) / tickRate
+		local t = (SysTime() - fixedTime) / G64_TICKRATE
 		local col
 		local myColorTable = self.colorTable
 		
@@ -604,28 +600,21 @@ if (CLIENT) then
 				self:GenerateMesh()
 			end
 			
-			-- If hasn't received any update in > 1.5s, don't tick and don't draw
-			if(tickDeltaTime > 1.5) then
-				self:SetNoDraw(true)
-				systimetimers.Pause("G64_MARIO_TICK" .. self.MarioId)
-			else
-				self:SetNoDraw(false)
-				systimetimers.Resume("G64_MARIO_TICK" .. self.MarioId)
-			end
-			
 			self:NextThink(CurTime())
 			return true
 		end
 		
-		systimetimers.Create("G64_MARIO_TICK" .. self.MarioId, tickRate, 0, function()
+		hook.Add("G64GameTick", "G64_MARIO_TICK" .. self.MarioId, function()
 			if(self.tickTime < 0) then return end
 			tickDeltaTime = SysTime() - self.tickTime
+			-- If hasn't received any update in > 1.5s, don't tick and don't draw
+			if(tickDeltaTime > 1.5) then
+				self:SetNoDraw(true)
+				return
+			else
+				self:SetNoDraw(false)
+			end
 			MarioTick()
-		end)
-
-		hook.Add("G64AdjustedTimeScale", "G64_ADJUST_TIMESCALE" .. self.MarioId, function(timeScale)
-			tickRate = 1/33 / timeScale
-			systimetimers.Adjust("G64_MARIO_TICK" .. self.MarioId, tickRate)
 		end)
 	end
 	
@@ -677,7 +666,6 @@ if (CLIENT) then
 			self.IsRemote = false
 			self:SetRenderBounds(self.Mins, self.Maxs)
 			tickCount = 0
-			tickRate = 1/33 / libsm64.TimeScale
 			
 			vertexBuffers[self.MarioId] = { {}, {} }
 			stateBuffers[self.MarioId] = { {}, {} }
@@ -940,7 +928,7 @@ if (CLIENT) then
 		end
 		
 		-- Tick Mario at 30Hz
-		systimetimers.Create("G64_MARIO_TICK" .. self.MarioId, tickRate, 0, function()
+		hook.Add("G64GameTick", "G64_MARIO_TICK" .. self.MarioId, function()
 			MarioTick()
 		end)
 
@@ -959,11 +947,6 @@ if (CLIENT) then
 			local damage = net.ReadUInt(8)
 			local src = Vector(net.ReadInt(16), net.ReadInt(16), net.ReadInt(16))
 			libsm64.MarioTakeDamage(self.MarioId, damage, 0, src)
-		end)
-
-		hook.Add("G64AdjustedTimeScale", "G64_ADJUST_TIMESCALE" .. self.MarioId, function(timeScale)
-			tickRate = 1/33 / timeScale
-			systimetimers.Adjust("G64_MARIO_TICK" .. self.MarioId, tickRate)
 		end)
 
 		hook.Add("PostDrawOpaqueRenderables", "G64_RENDER_OPAQUES" .. self.MarioId, function(bDrawingDepth, bDrawingSkybox, isDraw3DSkybox)
@@ -1043,7 +1026,7 @@ if (CLIENT) then
 		
 		hook.Add("CalcView", "G64_CALCVIEW" .. self.MarioId, function(ply, origin, angles, fov, znear, zfar)
 			if(gui.IsGameUIVisible() && game.SinglePlayer()) then return self.view end
-			local t = (SysTime() - fixedTime) / tickRate
+			local t = (SysTime() - fixedTime) / G64_TICKRATE
 			if(stateBuffers[self.MarioId][self.bufferIndex + 1][1] != nil) then
 				self.lerpedPos = LerpVector(t, stateBuffers[self.MarioId][self.bufferIndex + 1][1], stateBuffers[self.MarioId][1-self.bufferIndex + 1][1]) + upOffset
 				self:SetNetworkOrigin(self.lerpedPos)

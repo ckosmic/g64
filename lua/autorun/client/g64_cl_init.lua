@@ -25,6 +25,17 @@ hook.Add("G64Initialized", "G64_SPAWN_CHANGELEVEL_MARIO", function()
 	net.SendToServer()
 end)
 
+-- Timer for the the libsm64 game loop
+G64_TICKRATE = 1/33
+systimetimers.Create("G64_GAME_TICK", G64_TICKRATE, 0, function()
+	hook.Call("G64GameTick")
+end)
+
+hook.Add("G64AdjustedTimeScale", "G64_ADJUST_TIMESCALE", function(timeScale)
+	G64_TICKRATE = 1/33 / timeScale
+	systimetimers.Adjust("G64_GAME_TICK", G64_TICKRATE)
+end)
+
 -- Entity collision system from GWater-V3
 local propQueue = propQueue or {}
 local surfaceIds = surfaceIds or {}
@@ -191,7 +202,7 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	
 	local prevTimeScale = -1.0
 	local prevScaleFactor = -1.0
-	hook.Add("Think", "G64_UPDATE_COLLISION", function()
+	hook.Add("G64GameTick", "G64_UPDATE_COLLISION", function()
 		for k,v in ipairs(libsm64.EntMeshes) do
 			local trashCan = {}
 			if(!IsValid(v) || !(libsm64.AllowedEnts[v:GetClass()] || libsm64.AllowedBrushEnts[v:GetClass()])) then
@@ -306,6 +317,7 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 			end
 		end
 		table.Empty(libsm64.EntMeshes)
+		hook.Remove("G64GameTick", "G64_UPDATE_COLLISION")
 	end)
 
 	local request = {
