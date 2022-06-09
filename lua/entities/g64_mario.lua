@@ -699,7 +699,7 @@ if (CLIENT) then
 		
 		local hitPos = Vector()
 		local animInfo
-		local trDownVec = Vector(0, 0, -125/libsm64.ScaleFactor)
+		local trDownVec = Vector(0, 0, -150/libsm64.ScaleFactor)
 		local trMins = Vector(-16, -16, -4)
 		local trMaxs = Vector(16, 16, 4)
 		local function MarioTick()
@@ -830,12 +830,6 @@ if (CLIENT) then
 				maxs = trMaxs,
 				mask = MASK_SHOT_HULL
 			})
-			if(tr.Entity.G64SurfaceType == nil && tr.Entity.G64TerrainType == nil) then
-				libsm64.SetMarioFloorOverrides(self.MarioId, MatTypeToTerrainType(tr.MatType), g64types.SM64SurfaceType.SURFACE_DEFAULT)
-			else
-				-- Turn off overrides
-				libsm64.SetMarioFloorOverrides(self.MarioId, 0x7, 0x39)
-			end
 			if(IsValid(tr.Entity) && tr.Hit && tr.Entity.HitStunTimer != nil && tr.Entity.HitStunTimer < 0) then
 				local min, max = tr.Entity:WorldSpaceAABB()
 				if(tr.Entity:IsNPC() == true || tr.Entity:IsPlayer() == true) then
@@ -868,6 +862,21 @@ if (CLIENT) then
 						net.WriteVector(tr.HitPos)
 						net.WriteUInt(32, 8)
 					net.SendToServer()
+				end
+			end
+			-- If we're not over a living ent, get floor mat instead
+			if(!IsValid(tr.Entity)) then
+				tr = util.TraceLine({
+					start = self.marioCenter,
+					endpos = self.marioCenter + trDownVec,
+					filter = { self, lPlayer },
+					mask = MASK_SOLID
+				})
+				if(tr.Entity.G64SurfaceType == nil && tr.Entity.G64TerrainType == nil) then
+					libsm64.SetMarioFloorOverrides(self.MarioId, MatTypeToTerrainType(tr.MatType), g64types.SM64SurfaceType.SURFACE_DEFAULT)
+				else
+					-- Turn off overrides
+					libsm64.SetMarioFloorOverrides(self.MarioId, 0x7, 0x39)
 				end
 			end
 			
