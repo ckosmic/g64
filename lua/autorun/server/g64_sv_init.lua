@@ -169,6 +169,10 @@ hook.Add("PlayerUse", "G64_PLAYER_USE", function(ply, ent)
 	if(IsValid(ply.MarioEnt) && ply.IsMario == true && useBlacklist[ent:GetClass()]) then return false end
 end)
 
+hook.Add("PlayerDisconnected", "G64_PLY_DISCONNECT", function(ply)
+	if(IsValid(ply.MarioEnt) && ply.IsMario == true) then ply.MarioEnt:Remove() end
+end)
+
 net.Receive("G64_UPLOADCOLORS", function(len, ply)
 	if(g64sv.PlayerColors[ply] == nil) then g64sv.PlayerColors[ply] = {} end
 	for i=1, 6 do
