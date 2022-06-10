@@ -134,12 +134,6 @@ hook.Add("EntityTakeDamage", "G64_PLAYER_DAMAGED", function(target, dmg)
 	end
 end)
 
-hook.Add("PlayerDeath", "G64_PLAYER_DEATH", function(victim, inflictor, attacker)
-	if(IsValid(victim.MarioEnt)) then
-		victim.MarioEnt:Remove()
-	end
-end)
-
 -- Exit mario if the use key is pressed
 hook.Add("KeyPress", "G64_EXIT_MARIO", function(ply, key)
 	if(IsValid(ply.MarioEnt)) and ( key == IN_RELOAD ) then
@@ -171,6 +165,17 @@ end)
 
 hook.Add("PlayerDisconnected", "G64_PLY_DISCONNECT", function(ply)
 	if(IsValid(ply.MarioEnt) && ply.IsMario == true) then ply.MarioEnt:Remove() end
+end)
+
+hook.Add("OnNPCKilled", "G64_NPC_KILLED", function(npc, attacker, inflictor)
+	npc:SetNWBool("KilledByMario", true)
+end)
+
+hook.Add("PlayerDeath", "G64_PLAYER_DEATH", function(victim, inflictor, attacker)
+	victim:SetNWBool("KilledByMario", true)
+	if(IsValid(victim.MarioEnt)) then
+		victim.MarioEnt:Remove()
+	end
 end)
 
 net.Receive("G64_UPLOADCOLORS", function(len, ply)

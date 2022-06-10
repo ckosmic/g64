@@ -243,28 +243,14 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 		-- Update NPC/Player collision
 		for i=#objects,1,-1 do
 			v = objects[i]
-			if(!IsValid(v)) then
-				if(objectIds[i] != nil && objectIds[i] > 0) then
+			if(!IsValid(v) || v:GetNWBool("KilledByMario") == true) then
+				if(objectIds[i] != nil && objectIds[i] >= 0) then
 					libsm64.ObjectDelete(objectIds[i])
 					table.remove(objectIds, i)
 					table.remove(objects, i)
 				end
 			else
 				libsm64.ObjectMove(v.G64ObjectId, v:GetPos())
-			end
-		end
-
-		-- Update entity attack timers
-		local frameTime = FrameTime()
-		for i=#allEnts,1,-1 do
-			v = allEnts[i]
-			if(IsValid(v)) then
-				if(v.HitStunTimer == nil) then
-					v.HitStunTimer = 0
-				end
-				v.HitStunTimer = v.HitStunTimer - frameTime
-			else
-				table.remove(allEnts, i)
 			end
 		end
 
@@ -308,6 +294,22 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 		end
 
 		libsm64.SetAutoUpdateState(GetConVar("g64_auto_update"):GetBool())
+	end)
+
+	hook.Add("Think", "G64_CL_THINK", function()
+		-- Update entity attack timers
+		local frameTime = FrameTime()
+		for i=#allEnts,1,-1 do
+			v = allEnts[i]
+			if(IsValid(v)) then
+				if(v.HitStunTimer == nil) then
+					v.HitStunTimer = 0
+				end
+				v.HitStunTimer = v.HitStunTimer - frameTime
+			else
+				table.remove(allEnts, i)
+			end
+		end
 	end)
 	
 	hook.Add("PreCleanupMap", "G64_CLEANUP_ENTITIES", function()
