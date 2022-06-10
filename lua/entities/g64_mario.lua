@@ -937,10 +937,12 @@ if CLIENT then
 		
 		-- Tick Mario at 30Hz
 		hook.Add("G64GameTick", "G64_MARIO_TICK" .. self.MarioId, function()
+			if FrameTime() == 0 then return end
 			MarioTick()
 		end)
 
 		function self:Think()
+			if FrameTime() == 0 then return end
 			if not gui.IsGameUIVisible() or not game.SinglePlayer() then
 				self:GenerateMesh()
 			end
@@ -1038,6 +1040,7 @@ if CLIENT then
 		
 		
 		hook.Add("CalcView", "G64_CALCVIEW" .. self.MarioId, function(ply, origin, angles, fov, znear, zfar)
+			if FrameTime() == 0 then return self.view end
 			if gui.IsGameUIVisible() and game.SinglePlayer() then return self.view end
 			local t = (SysTime() - fixedTime) / G64_TICKRATE
 			if stateBuffers[self.MarioId][self.bufferIndex + 1][1] ~= nil then
