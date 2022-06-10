@@ -23,25 +23,25 @@ g64config.Save = function()
 end
 
 g64config.Load = function()
-	if(file.Exists("g64/config.json", "DATA")) then
+	if file.Exists("g64/config.json", "DATA") then
 		local json = file.Read("g64/config.json", "DATA")
 		local loaded = util.JSONToTable(json)
 		local loadedKeys = table.GetKeys(loaded)
 		local defaultKeys = table.GetKeys(g64config.Config)
 		local dirty = false
 		for i = 1, #defaultKeys do
-			if(!table.HasValue(loadedKeys, defaultKeys[i])) then
+			if not table.HasValue(loadedKeys, defaultKeys[i]) then
 				table.insert(loaded, g64config.Config[defaultKeys[i]])
 				dirty = true
 			end
 		end
 		for i = 1, #loadedKeys do
-			if(!table.HasValue(defaultKeys, loadedKeys[i])) then
+			if not table.HasValue(defaultKeys, loadedKeys[i]) then
 				loaded[loadedKeys[i]] = nil
 				dirty = true
 			end
 		end
-		if(dirty) then
+		if dirty then
 			g64config.Save()
 		end
 		g64config.Config = loaded

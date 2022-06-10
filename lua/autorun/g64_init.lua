@@ -45,21 +45,21 @@ if CLIENT then
 	end
 
 	function InitializeWorld(timeout)
-		if(jit.arch == "x86") then
+		if jit.arch == "x86" then
 			libsm64 = {}
 			LoadFailure()
 			chat.AddText(Color(255, 100, 100), "[G64] You are on 32-bit Garry's Mod. G64 only works in 64-bit mode. Follow the instructions here to switch to 64-bit: ", Color(86, 173, 255), "https://github.com/ckosmic/g64#installation\n")
 			return
 		end
-		if(file.Exists("lua/bin/" .. moduleName, "MOD")) then
+		if file.Exists("lua/bin/" .. moduleName, "MOD") then
 			require("g64")
 
-			if(libsm64.GetPackageVersion == nil) then
+			if libsm64.GetPackageVersion == nil then
 				-- Pre-auto-updater check
 				chat.AddText(Color(255, 100, 100), "[G64] Your G64 binary module and libsm64 versions are outdated! Please download the latest versions of both from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest", Color(255, 100, 100), ". (This next version comes with an optional auto-updater so that's this process will be way easier after you update.)\n")
 				libsm64.ModuleOutdated = true 
 				libsm64.LibSM64Outdated = true
-				if(!game.SinglePlayer()) then -- Don't load outdated libsm64 in multi just in case of incompatibilities
+				if not game.SinglePlayer() then -- Don't load outdated libsm64 in multi just in case of incompatibilities
 					LoadFailure()
 					return
 				end
@@ -80,7 +80,7 @@ if CLIENT then
 			libsm64.SetScaleFactor(libsm64.ScaleFactor)
 			
 			local mapStatus = "[G64] Getting map geometry..."
-			if(!LocalPlayer().SM64LoadedMap) then
+			if not LocalPlayer().SM64LoadedMap then
 				net.Start("G64_UPLOADCOLORS")
 					for i=1, 6 do
 						net.WriteUInt(g64config.Config.MarioColors[i][1], 8)
@@ -131,7 +131,7 @@ if CLIENT then
 					yChunks = math.ceil(yDelta / tileSize)
 					xDispChunks = math.ceil(xDelta / dispTileSize)
 					yDispChunks = math.ceil(yDelta / dispTileSize)
-					if(GetConVar("g64_debug_collision"):GetBool()) then
+					if GetConVar("g64_debug_collision"):GetBool() then
 						print("[G64] Chunks: ", xChunks, yChunks)
 						print("[G64] World bounds: ", worldMin.x, worldMin.y, worldMax.x, worldMax.y)
 					end
@@ -163,7 +163,7 @@ if CLIENT then
 					local triMin = Vector(16384, 16384)
 					local triMax = Vector(-16384, -16384)
 					
-					if(vertOffset == nil) then vertOffset = Vector() end
+					if vertOffset == nil then vertOffset = Vector() end
 					
 					for i = 1, 3 do
 						local x = math.Clamp(vecs[i].x + vertOffset.x, worldMin.x, worldMax.x)
@@ -172,12 +172,12 @@ if CLIENT then
 						local xChunk, yChunk
 						xChunk = math.floor((x + 16384 - xOffset - 100) / xDelta * nChunksX) -- Subtract then add 100 units for vertices that may be on chunk borders
 						yChunk = math.floor((y + 16384 - yOffset - 100) / yDelta * nChunksY)
-						if(xChunk < triMin.x) then triMin.x = xChunk end
-						if(yChunk < triMin.y) then triMin.y = yChunk end
+						if xChunk < triMin.x then triMin.x = xChunk end
+						if yChunk < triMin.y then triMin.y = yChunk end
 						xChunk = math.floor((x + 16384 - xOffset + 100) / xDelta * nChunksX)
 						yChunk = math.floor((y + 16384 - yOffset + 100) / yDelta * nChunksY)
-						if(xChunk > triMax.x) then triMax.x = xChunk + 1 end
-						if(yChunk > triMax.y) then triMax.y = yChunk + 1 end
+						if xChunk > triMax.x then triMax.x = xChunk + 1 end
+						if yChunk > triMax.y then triMax.y = yChunk + 1 end
 						table.insert(triVerts, Vector(x, y, z))
 					end
 					triMin.x = math.Clamp(triMin.x, 0, nChunksX-1)
@@ -195,7 +195,7 @@ if CLIENT then
 						local x = m[1] + 1
 						local y = m[2] + 1
 						for l,n in ipairs(triVerts) do
-							if(vertTable[x] == nil || vertTable[x][y] == nil) then print("Vertex array out of bounds at: ", x, y) end
+							if vertTable[x] == nil or vertTable[x][y] == nil then print("Vertex array out of bounds at: ", x, y) end
 							table.insert(vertTable[x][y], n)
 						end
 					end
@@ -208,7 +208,7 @@ if CLIENT then
 					-- Displacements aren't included in map phys geometry,
 					-- so we have to do the next cursed thing: bsp parsing
 					local function ParseDisplacements(callback)
-						if(GetConVar("g64_process_displacements"):GetBool()) then
+						if GetConVar("g64_process_displacements"):GetBool() then
 							mapStatus = "[G64] Processing displacements..."
 							print(mapStatus)
 							bsp:LoadDisplacementVertices(function()
@@ -230,7 +230,7 @@ if CLIENT then
 					
 					-- Neither are prop_statics
 					local function ParseStaticProps(callback)
-						if(GetConVar("g64_process_static_props"):GetBool()) then
+						if GetConVar("g64_process_static_props"):GetBool() then
 							mapStatus = "[G64] Processing static props..."
 							print(mapStatus)
 							
@@ -279,7 +279,7 @@ if CLIENT then
 									for k,v in ipairs(bsp.static_props[i].names) do
 										local csEnt = ents.CreateClientProp(v)
 										props[v] = {}
-										if(csEnt:GetPhysicsObject():IsValid()) then
+										if csEnt:GetPhysicsObject():IsValid() then
 											for k,convex in pairs(csEnt:GetPhysicsObject():GetMeshConvexes()) do
 												for k,vertex in pairs(convex) do
 													table.insert(props[v], vertex.pos)
@@ -290,7 +290,7 @@ if CLIENT then
 									end
 									for k,v in ipairs(bsp.static_props[i].entries) do
 										local propVerts = props[v.PropType]
-										if(propVerts != nil && v.Solid == 6) then
+										if propVerts ~= nil and v.Solid == 6 then
 											local rotatedVerts = RotateVertices(propVerts, v.Angles)
 											for j = 1, #rotatedVerts, 3 do
 												local vecs = {
@@ -321,10 +321,10 @@ if CLIENT then
 				
 				net.Receive("G64_LOADMAPGEO", function(len, ply)
 					local msg = net.ReadUInt(8)
-					if(msg == 0) then
+					if msg == 0 then
 						-- Setup variables n stuff
 						InitMapDownload()
-					elseif(msg == 1) then
+					elseif msg == 1 then
 						-- Process map phys geometry
 						local vertCount = net.ReadUInt(32)
 						local tileArea = tileSize * tileSize
@@ -336,7 +336,7 @@ if CLIENT then
 							
 							PlaceTriangleInChunks(vecs, vertices, xChunks, yChunks)
 						end
-					elseif(msg == 2) then
+					elseif msg == 2 then
 						ParseBSP(function()
 							
 							local endTime = CurTime()
@@ -442,7 +442,7 @@ if CLIENT then
 	end)
 else
 	net.Receive("G64_LOADMAPGEO", function(len, ply)
-		if(!ply.SM64LoadedMap) then
+		if not ply.SM64LoadedMap then
 			LoadMapGeometry(ply)
 		end
 		ply.SM64LoadedMap = true
@@ -465,7 +465,7 @@ else
 		net.Send(ply)
 		hook.Add("Tick", "G64_MAP_LOADER" .. ply:EntIndex(), function()
 			local counter = 0
-			while(counter < 32 && #convexes ~= 0) do
+			while counter < 32 and #convexes ~= 0 do
 				local convex = table.remove(convexes)
 				net.Start("G64_LOADMAPGEO", false)
 				net.WriteUInt(1, 8)
@@ -480,7 +480,7 @@ else
 				end
 				net.Send(ply)
 			end
-			if(#convexes == 0) then
+			if #convexes == 0 then
 				hook.Remove("Tick", "G64_MAP_LOADER" .. ply:EntIndex())
 				net.Start("G64_LOADMAPGEO", false)
 				net.WriteUInt(2, 8)

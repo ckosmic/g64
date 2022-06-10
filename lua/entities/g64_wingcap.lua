@@ -10,7 +10,7 @@ ENT.AdminSpawnable = true
 ENT.Category = "G64"
 
 function ENT:SpawnFunction(ply, tr, ClassName)
-	if(!tr.Hit) then return end
+	if not tr.Hit then return end
 	
 	local SpawnPos = tr.HitPos + tr.HitNormal * 16
 	
@@ -33,7 +33,7 @@ function ENT:Initialize()
 	self:SetMoveType( MOVETYPE_VPHYSICS )
 	self:SetSolid( SOLID_VPHYSICS )
 
-	if ( SERVER ) then self:PhysicsInit( SOLID_VPHYSICS ) end
+	if SERVER then self:PhysicsInit( SOLID_VPHYSICS ) end
 	
 	self:PhysWake()
 end
@@ -43,9 +43,9 @@ function ENT:Draw()
 end
 
 function ENT:Think()
-	if(self:GetPos():DistToSqr(self.Owner:GetPos()) < 4000) then
-		if(CLIENT) then 
-			if(self.Owner.MarioEnt != nil && self.Owner.IsMario == true && self.Owner.MarioEnt.hasWingCap == false) then
+	if self:GetPos():DistToSqr(self.Owner:GetPos()) < 4000 then
+		if CLIENT then 
+			if self.Owner.MarioEnt ~= nil and self.Owner.IsMario == true and self.Owner.MarioEnt.hasWingCap == false then
 				self.Owner.MarioEnt.EnableWingCap = true
 			end
 			return

@@ -26,7 +26,7 @@ g64sv.PlayerTick = {}
 
 local directionAngCos = math.cos(math.pi / 2)
 local function DegreesFromEyes(ply, pos)
-	if(!pos) then return 360 end
+	if not pos then return 360 end
 	local dPos = (pos + ply:EyeAngles():Forward()*300) - ply:GetShootPos()
 	dPos:Normalize()
 	local flDot = ply:EyeAngles():Forward():Dot(dPos)
@@ -39,7 +39,7 @@ local networkedPos = Vector()
 local upOffset = Vector(0,0,5)
 animInfo.rotation = {}
 net.Receive("G64_TRANSMITMOVE", function(len, ply)
-	if(IsValid(ply.MarioEnt)) then
+	if IsValid(ply.MarioEnt) then
 	
 		networkedPos.x = net.ReadInt(16)
 		networkedPos.y = net.ReadInt(16)
@@ -64,7 +64,7 @@ net.Receive("G64_TRANSMITMOVE", function(len, ply)
 		filter:RemovePlayer(ply)
 		local plys = filter:GetPlayers()
 		for i = 1, #plys do
-			if(DegreesFromEyes(plys[i], networkedPos) > plys[i]:GetFOV()) then
+			if DegreesFromEyes(plys[i], networkedPos) > plys[i]:GetFOV() then
 				filter:RemovePlayer(plys[i])
 			end
 		end
@@ -82,8 +82,9 @@ net.Receive("G64_TRANSMITMOVE", function(len, ply)
 end)
 
 net.Receive("G64_TRANSMITCOLORS", function(len, ply)
-	if(IsValid(ply.MarioEnt)) then
-		if(g64sv.PlayerColors[ply] == nil) then g64sv.PlayerColors[ply] = {} end
+	if IsValid(ply.MarioEnt) then
+		if g64sv.PlayerColors[ply] == nil then g64sv.PlayerColors[ply] = {} end
+
 		local colTab = g64sv.PlayerColors[ply]
 		for i=1, 6 do
 			colTab[i] = { net.ReadUInt(8), net.ReadUInt(8), net.ReadUInt(8) }
@@ -102,8 +103,8 @@ end)
 
 net.Receive("G64_REQUESTCOLORS", function(len, ply)
 	local owner = net.ReadEntity()
-	if(IsValid(owner.MarioEnt)) then
-		if(g64sv.PlayerColors[owner] != nil) then
+	if IsValid(owner.MarioEnt) then
+		if g64sv.PlayerColors[owner] ~= nil then
 			local colTab = g64sv.PlayerColors[owner]
 			
 			net.Start("G64_UPDATEREMOTECOLORS", false)
@@ -119,7 +120,7 @@ net.Receive("G64_REQUESTCOLORS", function(len, ply)
 end)
 
 hook.Add("EntityTakeDamage", "G64_PLAYER_DAMAGED", function(target, dmg)
-	if(target:IsPlayer() && target.IsMario == true && target:HasGodMode() == false) then
+	if target:IsPlayer() and target.IsMario == true and target:HasGodMode() == false then
 		local damage = math.ceil(dmg:GetDamage()/10)
 		local src = dmg:GetDamagePosition()
 	
@@ -136,14 +137,14 @@ end)
 
 -- Exit mario if the use key is pressed
 hook.Add("KeyPress", "G64_EXIT_MARIO", function(ply, key)
-	if(IsValid(ply.MarioEnt)) and ( key == IN_RELOAD ) then
+	if IsValid(ply.MarioEnt) and ( key == IN_RELOAD ) then
 		ply.MarioEnt:Remove()
 	end
 end)
 
 hook.Add("EntityRemoved", "G64_ENTITY_REMOVED", function(ent)
 	local ply = ent.Owner
-	if(ply != nil && ply:IsValid() && ply:IsPlayer() && ply.IsMario == true) then
+	if ply ~= nil and ply:IsValid() and ply:IsPlayer() and ply.IsMario == true then
 		g64sv.PlayerColors[ply] = nil
 		g64sv.PlayerTick[ply] = nil
 	end
@@ -160,26 +161,21 @@ local useBlacklist = {
 	prop_vehicle_prisoner_pod = true,
 }
 hook.Add("PlayerUse", "G64_PLAYER_USE", function(ply, ent)
-	if(IsValid(ply.MarioEnt) && ply.IsMario == true && useBlacklist[ent:GetClass()]) then return false end
+	if IsValid(ply.MarioEnt) and ply.IsMario == true and useBlacklist[ent:GetClass()] then return false end
 end)
 
 hook.Add("PlayerDisconnected", "G64_PLY_DISCONNECT", function(ply)
-	if(IsValid(ply.MarioEnt) && ply.IsMario == true) then ply.MarioEnt:Remove() end
-end)
-
-hook.Add("OnNPCKilled", "G64_NPC_KILLED", function(npc, attacker, inflictor)
-	npc:SetNWBool("KilledByMario", true)
+	if IsValid(ply.MarioEnt) and ply.IsMario == true then ply.MarioEnt:Remove() end
 end)
 
 hook.Add("PlayerDeath", "G64_PLAYER_DEATH", function(victim, inflictor, attacker)
-	victim:SetNWBool("KilledByMario", true)
-	if(IsValid(victim.MarioEnt)) then
+	if IsValid(victim.MarioEnt) then
 		victim.MarioEnt:Remove()
 	end
 end)
 
 net.Receive("G64_UPLOADCOLORS", function(len, ply)
-	if(g64sv.PlayerColors[ply] == nil) then g64sv.PlayerColors[ply] = {} end
+	if g64sv.PlayerColors[ply] == nil then g64sv.PlayerColors[ply] = {} end
 	for i=1, 6 do
 		g64sv.PlayerColors[ply][i] = { net.ReadUInt(8), net.ReadUInt(8), net.ReadUInt(8) }
 	end
@@ -192,8 +188,8 @@ net.Receive("G64_DAMAGEENTITY", function(len, ply)
 	local hitPos = net.ReadVector()
 	local minDmg = net.ReadUInt(8)
 
-	if(!IsValid(victim) || !IsValid(mario)) then return end
-	if(victim:IsNPC() || victim:IsPlayer() || victim:Health() > 0) then
+	if not IsValid(victim) or !IsValid(mario) then return end
+	if victim:IsNPC() or victim:IsPlayer() or victim:Health() > 0 then
 		local d = DamageInfo()
 		d:SetDamage(math.random(minDmg, minDmg+10))
 		d:SetAttacker(mario)
@@ -203,25 +199,25 @@ net.Receive("G64_DAMAGEENTITY", function(len, ply)
 		d:SetDamagePosition(hitPos)
 
 		victim:TakeDamageInfo(d)
-	elseif(victim:GetPhysicsObject():IsValid()) then
+	elseif victim:GetPhysicsObject():IsValid() then
 		local phys = victim:GetPhysicsObject()
 		
 		phys:ApplyForceOffset(forceVec * 7800, hitPos)
 	end
 	
-	if(ply:GetUseEntity() != NULL) then
+	if ply:GetUseEntity() ~= NULL then
 		ply:GetUseEntity():Use(mario, mario, USE_ON)
 	end
 end)
 
 net.Receive("G64_REMOVEINVALIDMARIO", function(len, ply)
 	local ent = net.ReadEntity()
-	if(ent != nil) then ent:Remove() end
+	if ent ~= nil then ent:Remove() end
 end)
 
 net.Receive("G64_RESETINVALIDPLAYER", function(len, ply)
 	local mario = net.ReadEntity()
-	if(mario != nil) then mario:Remove() end
+	if mario ~= nil then mario:Remove() end
 	ply.SM64LoadedMap = false
 end)
 

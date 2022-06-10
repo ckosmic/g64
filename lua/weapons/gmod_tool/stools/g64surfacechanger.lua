@@ -11,10 +11,10 @@ TOOL.ClientConVar[ "g64surfacetype" ] = g64types.SM64SurfaceType.SURFACE_DEFAULT
 TOOL.ClientConVar[ "g64terraintype" ] = g64types.SM64TerrainType.TERRAIN_STONE
 
 local function SetSurfaceInfo( ply, ent, data )
-	if( data.SurfaceType ) then ent.G64SurfaceType = data.SurfaceType end
-	if( data.TerrainType ) then ent.G64TerrainType = data.TerrainType end
+	if data.SurfaceType then ent.G64SurfaceType = data.SurfaceType end
+	if data.TerrainType then ent.G64TerrainType = data.TerrainType end
 	
-	if( SERVER ) then 
+	if SERVER then 
 		duplicator.StoreEntityModifier( ent, "g64_surfaceinfo", data )
 		
 		local filter = RecipientFilter()
@@ -30,9 +30,9 @@ duplicator.RegisterEntityModifier( "g64_surfaceinfo", SetSurfaceInfo )
 
 function TOOL:LeftClick( trace )
 	local ent = trace.Entity
-	if ( IsValid( ent ) && (ent:IsPlayer() || ent == Entity(0)) ) then return end
-	if ( SERVER && !util.IsValidPhysicsObject( trace.Entity, trace.PhysicsBone ) ) then return end
-	if ( CLIENT ) then return true end
+	if IsValid( ent ) and (ent:IsPlayer() or ent == Entity(0)) then return end
+	if SERVER and not util.IsValidPhysicsObject( trace.Entity, trace.PhysicsBone ) then return end
+	if CLIENT then return true end
 	
 	local surf = self:GetClientNumber( "g64surfacetype", g64types.SM64SurfaceType.SURFACE_DEFAULT )
 	local terr = self:GetClientNumber( "g64terraintype", g64types.SM64TerrainType.TERRAIN_STONE )

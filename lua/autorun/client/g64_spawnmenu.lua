@@ -29,13 +29,13 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		browseButton:SetText("Browse...")
 		browseButton.DoClick = function()
 			local filePath = libsm64.OpenFileDialog()
-			if(!isnumber(filePath)) then
+			if not isnumber(filePath) then
 				GetConVar("g64_rompath"):SetString(filePath)
 				filePathEntry:SetValue(filePath)
 			else
-				if(filePath == 0) then
+				if filePath == 0 then
 					chat.AddText(Color(255, 100, 100), "[G64] Failed to open file.")
-				elseif(filePath == 1) then
+				elseif filePath == 1 then
 					chat.AddText(Color(255, 100, 100), "[G64] File browser unsupported on non-windows computers.")
 				end
 			end
@@ -46,7 +46,7 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		toggleUpdates:SetTextColor(Color(0,0,0))
 		toggleUpdates:SetTooltip([[Allows the addon to update libsm64
 		and the G64 module upon disconnect.]])
-		if(GetConVar("g64_auto_update"):GetBool()) then toggleUpdates:SetValue(true)
+		if GetConVar("g64_auto_update"):GetBool() then toggleUpdates:SetValue(true)
 		else toggleUpdates:SetValue(false) end
 		toggleUpdates:SetConVar("g64_auto_update")
 		
@@ -55,7 +55,7 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		toggleInterp:SetTextColor(Color(0,0,0))
 		toggleInterp:SetTooltip([[Makes Mario's mesh move smoother but will
 		cause artifacts and may cause a slight performance drop.]])
-		if(GetConVar("g64_interpolation"):GetBool()) then toggleInterp:SetValue(true)
+		if GetConVar("g64_interpolation"):GetBool() then toggleInterp:SetValue(true)
 		else toggleInterp:SetValue(false) end
 		toggleInterp:SetConVar("g64_interpolation")
 		
@@ -64,7 +64,7 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		toggleCapMusic:SetTextColor(Color(0,0,0))
 		toggleCapMusic:SetTooltip([[Plays the wing cap or metal cap theme
 		when picking up a cap.]])
-		if(GetConVar("g64_interpolation"):GetBool()) then toggleCapMusic:SetValue(true)
+		if GetConVar("g64_interpolation"):GetBool() then toggleCapMusic:SetValue(true)
 		else toggleCapMusic:SetValue(false) end
 		toggleCapMusic:SetConVar("g64_cap_music")
 
@@ -76,7 +76,7 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		volumeSlider:SetConVar("g64_global_volume")
 		volumeSlider:SetDark(true)
 		volumeSlider.OnValueChanged = function(panel, value)
-			if(libsm64 != nil) then libsm64.SetGlobalVolume(value) end
+			if libsm64 ~= nil then libsm64.SetGlobalVolume(value) end
 		end
 		
 		local colHeader = vgui.Create("DLabel")
@@ -200,7 +200,7 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		end
 		
 		function musicHeader:Paint(w,h)
-			if(libsm64 != nil && libsm64.ModuleLoaded == true && libsm64.IsGlobalInit()) then
+			if libsm64 ~= nil and libsm64.ModuleLoaded == true and libsm64.IsGlobalInit() then
 				self:SetText("Initialized.")
 				self:SetColor(Color(30, 200, 30))
 				stopButton:SetEnabled(true)

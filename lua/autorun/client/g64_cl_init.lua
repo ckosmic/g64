@@ -7,7 +7,7 @@ local spawnMarioOnceInited = false
 hook.Add("InitPostEntity", "G64_INIT_POST_ENTITY", function()
 	local marios = ents.FindByClass("g64_mario")
 	for k,v in ipairs(marios) do
-		if(v.Owner:SteamID() == LocalPlayer():SteamID()) then
+		if v.Owner:SteamID() == LocalPlayer():SteamID() then
 			net.Start("G64_RESETINVALIDPLAYER")
 			net.WriteEntity(v)
 			net.SendToServer()
@@ -20,7 +20,7 @@ hook.Add("InitPostEntity", "G64_INIT_POST_ENTITY", function()
 end)
 
 hook.Add("G64Initialized", "G64_SPAWN_CHANGELEVEL_MARIO", function()
-	if(spawnMarioOnceInited == false) then return end
+	if spawnMarioOnceInited == false then return end
 	net.Start("G64_SPAWNMARIOATPLAYER")
 	net.SendToServer()
 end)
@@ -55,16 +55,16 @@ function StopAllTracks()
 end
 
 function PlayTrack(seqId)
-	if(libsm64 != nil && libsm64.ModuleLoaded == true && libsm64.IsGlobalInit()) then
+	if libsm64 ~= nil and libsm64.ModuleLoaded == true and libsm64.IsGlobalInit() then
 		StopAllTracks()
 		libsm64.PlayMusic(0, SeqArgs(4, seqId), 0)
 	end
 end
 
 function GetSoundArg(soundTable)
-	if(type(soundTable) == "table") then
+	if type(soundTable) == "table" then
 		return libsm64.GetSoundArg(soundTable[1], soundTable[2], soundTable[3], soundTable[4], soundTable[5])
-	elseif(type(soundTable) == "number") then
+	elseif type(soundTable) == "number" then
 		return soundTable
 	end
 	return nil
@@ -77,15 +77,15 @@ function meta:HasGodMode()
 end
 
 local function AddPropMesh(prop)
-	if(!prop || !prop:IsValid()) then return end
+	if not prop or prop:IsValid() == false then return end
 	
 	local surf = prop.G64SurfaceType
 	local terr = prop.G64TerrainType
 	
-	if(surf == nil) then surf = 0 end
-	if(terr == nil) then terr = 0 end
+	if surf == nil then surf = 0 end
+	if terr == nil then terr = 0 end
 	
-	if(prop:IsScripted() && prop:GetPhysicsObject():IsValid() && prop:GetPhysicsObject():IsCollisionEnabled()) then
+	if prop:IsScripted() and prop:GetPhysicsObject():IsValid() and prop:GetPhysicsObject():IsCollisionEnabled() then
 		surfaceIds[#libsm64.EntMeshes+1] = {}
 		for k,convex in pairs(prop:GetPhysicsObject():GetMeshConvexes()) do
 			local finalMesh = {}
@@ -99,10 +99,10 @@ local function AddPropMesh(prop)
 		return
 	end
 	
-	if(libsm64.AllowedBrushEnts[prop:GetClass()]) then
+	if libsm64.AllowedBrushEnts[prop:GetClass()] then
 		local finalMesh = {}
 		local surfaces = prop:GetBrushSurfaces()
-		if(surfaces == nil || #surfaces == 0) then return end
+		if not surfaces or #surfaces == 0 then return end
 		for k,surfInfo in pairs(surfaces) do
 			local vertices = surfInfo:GetVertices()
 			for i = 1, #vertices - 2 do
@@ -113,7 +113,7 @@ local function AddPropMesh(prop)
 			end
 		end
 		
-		if(#finalMesh == 0) then return end
+		if #finalMesh == 0 then return end
 		surfaceIds[#libsm64.EntMeshes+1] = {}
 		table.insert(surfaceIds[#libsm64.EntMeshes+1], libsm64.SurfaceObjectCreate(finalMesh, prop:GetPos(), prop:GetAngles(), surf, terr))
 		table.insert(libsm64.EntMeshes, prop)
@@ -122,15 +122,15 @@ local function AddPropMesh(prop)
 	end
 	
 	local model = prop:GetModel()
-	if(!model && !util.GetModelMeshes(model)) then return end
+	if not model and not util.GetModelMeshes(model) then return end
 	
 	prop:PhysicsInit(6)
-	if(!prop:GetPhysicsObject():IsValid()) then
+	if prop:GetPhysicsObject():IsValid() == false then
 		prop:PhysicsDestroy()
 		return
 	end
 	
-	if(prop:GetPhysicsObject():IsValid() && prop:GetPhysicsObject():IsCollisionEnabled()) then
+	if prop:GetPhysicsObject():IsValid() and prop:GetPhysicsObject():IsCollisionEnabled() then
 		surfaceIds[#libsm64.EntMeshes+1] = {}
 		for k,convex in pairs(prop:GetPhysicsObject():GetMeshConvexes()) do
 			local finalMesh = {}
@@ -160,7 +160,7 @@ end
 hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	
 	function libsm64.AddColliderToQueue(ent)
-		if(ent:IsValid() && !ent.SM64_UPLOADED && (libsm64.AllowedEnts[ent:GetClass()] || libsm64.AllowedBrushEnts[ent:GetClass()])) then
+		if ent:IsValid() and not ent.SM64_UPLOADED and (libsm64.AllowedEnts[ent:GetClass()] or libsm64.AllowedBrushEnts[ent:GetClass()]) then
 			propQueue[#propQueue+1] = ent
 			ent.SM64_UPLOADED = true
 		end
@@ -169,7 +169,7 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	function libsm64.RemoveCollider(ent)
 		ent.SM64_UPLOADED = false
 		local entIndex = table.KeyFromValue(libsm64.EntMeshes, ent)
-		if(surfaceIds[entIndex] != nil) then
+		if surfaceIds[entIndex] ~= nil then
 			for j,surfaceId in pairs(surfaceIds[entIndex]) do
 				libsm64.SurfaceObjectDelete(surfaceId)
 			end
@@ -181,7 +181,7 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	local function ProcessNewEntity(ent)
 		libsm64.AddColliderToQueue(ent)
 		allEnts[#allEnts + 1] = ent
-		if((ent:IsNPC() || ent:IsPlayer()) && ent != LocalPlayer() && ent:GetClass() != "g64_mario") then
+		if (ent:IsNPC() or ent:IsPlayer()) and ent ~= LocalPlayer() and ent:GetClass() ~= "g64_mario" then
 			local min, max = ent:WorldSpaceAABB()
 			local hbHeight = max.z - min.z
 			local hbRad = max.x - min.x
@@ -205,17 +205,17 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	hook.Add("G64GameTick", "G64_UPDATE_COLLISION", function()
 		for k,v in ipairs(libsm64.EntMeshes) do
 			local trashCan = {}
-			if(!IsValid(v) || !(libsm64.AllowedEnts[v:GetClass()] || libsm64.AllowedBrushEnts[v:GetClass()])) then
+			if IsValid(v) == false or not (libsm64.AllowedEnts[v:GetClass()] or libsm64.AllowedBrushEnts[v:GetClass()]) then
 				table.insert(trashCan, k)
 				for j,surfaceId in pairs(surfaceIds[k]) do
 					libsm64.SurfaceObjectDelete(surfaceId)
 				end
 			else
 				local vPhys = v:GetPhysicsObject()
-				if(vPhys:IsValid()) then
-					if(v.CollisionState != nil) then
+				if vPhys:IsValid() then
+					if v.CollisionState ~= nil then
 						local vColState = v:GetPhysicsObject():IsCollisionEnabled()
-						if(v.CollisionState != vColState) then
+						if v.CollisionState ~= vColState then
 							v.CollisionState = vColState
 							libsm64.RemoveCollider(v)
 						end
@@ -235,7 +235,7 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 		end
 
 		for i = 1, 8 do
-			if(!propQueue[1]) then break end
+			if propQueue[1] == nil then break end
 			AddPropMesh(propQueue[1])
 			table.remove(propQueue, 1)
 		end
@@ -243,8 +243,8 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 		-- Update NPC/Player collision
 		for i=#objects,1,-1 do
 			v = objects[i]
-			if(!IsValid(v) || v:GetNWBool("KilledByMario") == true) then
-				if(objectIds[i] != nil && objectIds[i] >= 0) then
+			if not IsValid(v) or v:GetNoDraw() then
+				if objectIds[i] ~= nil and objectIds[i] >= 0 then
 					libsm64.ObjectDelete(objectIds[i])
 					table.remove(objectIds, i)
 					table.remove(objects, i)
@@ -254,19 +254,19 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 			end
 		end
 
-		if prevTimeScale != GetConVar("host_timescale"):GetFloat() then
+		if prevTimeScale ~= GetConVar("host_timescale"):GetFloat() then
 			libsm64.TimeScale = GetConVar("host_timescale"):GetFloat()
 			prevTimeScale = libsm64.TimeScale
 			hook.Call("G64AdjustedTimeScale", nil, libsm64.TimeScale)
 		end
 
-		if prevScaleFactor != GetConVar("g64_scale_factor"):GetFloat() then
+		if prevScaleFactor ~= GetConVar("g64_scale_factor"):GetFloat() then
 			libsm64.ScaleFactor = GetConVar("g64_scale_factor"):GetFloat()
 			prevScaleFactor = libsm64.ScaleFactor
 			libsm64.SetScaleFactor(libsm64.ScaleFactor)
 			local newBounds = 160 / libsm64.ScaleFactor
 			local marioEnt = LocalPlayer().MarioEnt
-			if(IsValid(marioEnt) == true) then
+			if IsValid(marioEnt) then
 				marioEnt.Maxs.x = newBounds
 				marioEnt.Maxs.y = newBounds
 				marioEnt.Maxs.z = newBounds
@@ -301,8 +301,8 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 		local frameTime = FrameTime()
 		for i=#allEnts,1,-1 do
 			v = allEnts[i]
-			if(IsValid(v)) then
-				if(v.HitStunTimer == nil) then
+			if IsValid(v) then
+				if v.HitStunTimer == nil then
 					v.HitStunTimer = 0
 				end
 				v.HitStunTimer = v.HitStunTimer - frameTime
@@ -331,16 +331,16 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 			local version = string.sub(tag, 2, #tag)
 			local lVersion = libsm64.GetPackageVersion()
 			local result = libsm64.CompareVersions(lVersion, version)
-			if(result == 0) then
-				if(GetConVar("g64_auto_update"):GetBool() == true) then
+			if result == 0 then
+				if GetConVar("g64_auto_update"):GetBool() == true then
 					MsgC(Color(255, 100, 100), "[G64] Your libsm64-g64 package is outdated! Please reconnect to auto-download the newest version.\n")
 				else
 					MsgC(Color(255, 100, 100), "[G64] Your libsm64-g64 package is outdated! Please download the latest version from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest", Color(255, 100, 100), " or turn auto-updates on in the G64 settings menu.\n")
 				end
 				libsm64.PackageOutdated = true
-			elseif(result == 1) then
+			elseif result == 1 then
 				print("[G64] You have a higher version of libsm64-g64 than what's on GitHub. How?\n")
-			elseif(result == 2) then
+			elseif result == 2 then
 				print("[G64] libsm64-g64 package is up to date.\n")
 			end
 		end,
@@ -348,11 +348,11 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 			print("Failed to get update information: ", reason)
 		end
 	}
-	if(libsm64.GetPackageVersion != nil) then HTTP(request) end
+	if libsm64.GetPackageVersion ~= nil then HTTP(request) end
 end)
 
 hook.Add("ShutDown", "G64_SHUTTING_DOWN", function()
-	if(libsm64.ModuleLoaded == true) then
+	if libsm64.ModuleLoaded == true then
 		libsm64.GlobalTerminate()
 	end
 end)
@@ -378,10 +378,10 @@ concommand.Add("g64_isinit", function(ply, cmd, args)
 	print(libsm64.IsGlobalInit())
 end)
 concommand.Add("g64_config_set", function(ply, cmd, args)
-	if(g64config.Config[args[1]] == nil) then MsgC(Color(255,100,100), "[G64] Config contains no key: ", args[1], "\n") return end
+	if g64config.Config[args[1]] == nil then MsgC(Color(255,100,100), "[G64] Config contains no key: ", args[1], "\n") return end
 	
 	local parsed = tonumber(args[2])
-	if(parsed != nil) then
+	if parsed ~= nil then
 		g64config.Config[args[1]] = parsed
 	else
 		g64config.Config[args[1]] = args[2]
