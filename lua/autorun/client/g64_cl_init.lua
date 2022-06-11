@@ -179,6 +179,7 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	end
 
 	local function ProcessNewEntity(ent)
+		if table.HasValue(allEnts, ent) then return end
 		libsm64.AddColliderToQueue(ent)
 		allEnts[#allEnts + 1] = ent
 		if (ent:IsNPC() or ent:IsPlayer()) and ent ~= LocalPlayer() and ent:GetClass() ~= "g64_mario" then
@@ -243,7 +244,7 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 		-- Update NPC/Player collision
 		for i=#objects,1,-1 do
 			v = objects[i]
-			if not IsValid(v) or (v:IsPlayer() and v:Health() <= 0) or (v:IsNPC() and v:GetNoDraw()) then
+			if not IsValid(v) or v == LocalPlayer() or (v:IsPlayer() and v:Health() <= 0) or (v:IsNPC() and v:GetNoDraw()) then
 				if objectIds[i] ~= nil and objectIds[i] >= 0 then
 					libsm64.ObjectDelete(objectIds[i])
 					table.remove(objectIds, i)
