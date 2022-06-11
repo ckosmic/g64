@@ -45,8 +45,10 @@ net.Receive("G64_TRANSMITMOVE", function(len, ply)
 		networkedPos.y = net.ReadInt(16)
 		networkedPos.z = net.ReadInt(16)
 		networkedPos = networkedPos + upOffset
-		ply:SetPos(networkedPos)
-		ply.MarioEnt:SetPos(networkedPos)
+		if not ply:InVehicle() then
+			ply:SetPos(networkedPos)
+			ply.MarioEnt:SetPos(networkedPos)
+		end
 		
 		animInfo.animID = net.ReadInt(16)
 		animInfo.animAccel = net.ReadInt(32)
@@ -161,7 +163,7 @@ local useBlacklist = {
 	prop_vehicle_prisoner_pod = true,
 }
 hook.Add("PlayerUse", "G64_PLAYER_USE", function(ply, ent)
-	if IsValid(ply.MarioEnt) and ply.IsMario == true and useBlacklist[ent:GetClass()] then return false end
+	--if IsValid(ply.MarioEnt) and ply.IsMario == true and useBlacklist[ent:GetClass()] then return false end
 end)
 
 hook.Add("PlayerDisconnected", "G64_PLY_DISCONNECT", function(ply)
@@ -171,6 +173,15 @@ end)
 hook.Add("PlayerDeath", "G64_PLAYER_DEATH", function(victim, inflictor, attacker)
 	if IsValid(victim.MarioEnt) then
 		victim.MarioEnt:Remove()
+	end
+end)
+
+hook.Add("SetupMove", "G64_SETUP_MOVE", function(ply, mv, cmd)
+	if not (IsValid(ply.MarioEnt) and ply.IsMario == true) then return end
+	if mv:KeyPressed(IN_USE) and ply:InVehicle() then
+		--local exitPt = ply:GetVehicle():CheckExitPoint(360, 2000)
+		--ply:SetPos(exitPt)
+		ply:ExitVehicle()
 	end
 end)
 

@@ -947,6 +947,23 @@ if CLIENT then
 				self:GenerateMesh()
 			end
 
+			if lPlayer:InVehicle() then
+				self.lerpedPos = lPlayer:GetPos()
+				self.lerpedPos:Add(lPlayer:GetForward()*13)
+				self.lerpedPos:Add(lPlayer:GetUp()*12)
+				self:SetNetworkOrigin(self.lerpedPos)
+				self:SetPos(self.lerpedPos)
+				self.InVehicle = true
+				libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_HOLD_BUTT_SLIDE_NO_CANCEL)
+				libsm64.SetMarioPosition(self.MarioId, self.lerpedPos)
+				local vForward = lPlayer:GetVehicle():GetForward()
+				local mAngle = math.atan2(vForward.y, vForward.x)/(math.pi*math.pi)
+				libsm64.SetMarioAngle(self.MarioId, mAngle)
+			elseif self.InVehicle == true then
+				self.InVehicle = false
+				libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_IDLE)
+			end
+
 			FindWaterLevel()
 
 			self:NextThink(CurTime())
@@ -1053,7 +1070,7 @@ if CLIENT then
 			self.view.origin.z = self.view.origin.z + 50 / libsm64.ScaleFactor
 			self.view.angles = angles
 			
-			CalcView_ThirdPerson(self.view, 500, 2, ply, { self, ply })
+			CalcView_ThirdPerson(self.view, 500, 2, ply, { self, ply, ply:GetVehicle() })
 			return self.view
 		end)
 		

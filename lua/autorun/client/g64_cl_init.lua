@@ -169,6 +169,8 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	function libsm64.RemoveCollider(ent)
 		ent.SM64_UPLOADED = false
 		local entIndex = table.KeyFromValue(libsm64.EntMeshes, ent)
+		local allEntIndex = table.KeyFromValue(allEnts, ent)
+		table.remove(allEnts, allEntIndex)
 		if surfaceIds[entIndex] ~= nil then
 			for j,surfaceId in pairs(surfaceIds[entIndex]) do
 				libsm64.SurfaceObjectDelete(surfaceId)
@@ -203,6 +205,7 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	
 	local prevTimeScale = -1.0
 	local prevScaleFactor = -1.0
+	local noCollidePos = Vector(0, 0, -32768)
 	hook.Add("G64GameTick", "G64_UPDATE_COLLISION", function()
 		for k,v in ipairs(libsm64.EntMeshes) do
 			local trashCan = {}
@@ -226,7 +229,11 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 				end
 				
 				for j,surfaceId in pairs(surfaceIds[k]) do
-					libsm64.SurfaceObjectMove(surfaceId, v:GetPos(), v:GetAngles())
+					if v:GetCollisionGroup() == COLLISION_GROUP_WORLD then
+						libsm64.SurfaceObjectMove(surfaceId, noCollidePos, v:GetAngles())
+					else
+						libsm64.SurfaceObjectMove(surfaceId, v:GetPos(), v:GetAngles())
+					end
 				end
 			end
 			for i=1,#trashCan do
@@ -281,12 +288,12 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 			end
 
 			-- Recreate prop collisions since their vertices depend on scale factor
-			for k,v in ipairs(libsm64.EntMeshes) do
-				for j,surfaceId in pairs(surfaceIds[k]) do
-					libsm64.SurfaceObjectDelete(surfaceId)
-				end
+			for i=#libsm64.EntMeshes,1,-1 do
+				v = libsm64.EntMeshes[i]
+				libsm64.RemoveCollider(v)
 			end
 			table.Empty(libsm64.EntMeshes)
+			table.Empty(surfaceIds)
 
 			local props = ents.GetAll()
 			for k,v in ipairs(props) do
