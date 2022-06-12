@@ -1,4 +1,5 @@
 AddCSLuaFile()
+include("includes/g64_utils.lua")
 
 util.AddNetworkString("G64_LOADMAPGEO")
 util.AddNetworkString("G64_PLAYERREADY")
@@ -34,6 +35,20 @@ local function DegreesFromEyes(ply, pos)
 	return math.abs(flDegreesFromCrosshair)
 end
 
+local function GetSeatPoint(veh, role)
+	if IsValid(veh) and veh:IsVehicle() then
+		local seatAttachment = veh:LookupAttachment("vehicle_feet_passenger" .. role)
+		local vPos, vAng = nil
+		if seatAttachment > 0 then
+			local seat = veh:GetAttachment(seatAttachment)
+			return seat.Pos, seat.Ang
+		else
+			return veh:GetPassengerSeatPoint(role)
+		end
+	end
+	return nil, nil
+end
+
 local animInfo = {}
 local networkedPos = Vector()
 local upOffset = Vector(0,0,5)
@@ -41,13 +56,15 @@ animInfo.rotation = {}
 net.Receive("G64_TRANSMITMOVE", function(len, ply)
 	if IsValid(ply.MarioEnt) then
 	
+		local mario = ply.MarioEnt
+
 		networkedPos.x = net.ReadInt(16)
 		networkedPos.y = net.ReadInt(16)
 		networkedPos.z = net.ReadInt(16)
 		networkedPos = networkedPos + upOffset
 		if not ply:InVehicle() then
 			ply:SetPos(networkedPos)
-			ply.MarioEnt:SetPos(networkedPos)
+			mario:SetPos(networkedPos)
 		end
 		
 		animInfo.animID = net.ReadInt(16)
@@ -58,6 +75,10 @@ net.Receive("G64_TRANSMITMOVE", function(len, ply)
 		
 		local health = net.ReadUInt(4)
 		ply:SetHealth(health)
+
+		if health <= 0 and ply:InVehicle() then
+			ply:ExitVehicle()
+		end
 		
 		local flags = net.ReadUInt(32)
 		
@@ -153,17 +174,10 @@ hook.Add("EntityRemoved", "G64_ENTITY_REMOVED", function(ent)
 end)
 
 local useBlacklist = {
-	prop_vehicle = true,
-	prop_vehicle_airboat = true,
-	prop_vehicle_apc = true,
-	prop_vehicle_cannon = true,
-	prop_vehicle_crane = true,
-	prop_vehicle_driveable = true,
-	prop_vehicle_jeep = true,
-	prop_vehicle_prisoner_pod = true,
+	
 }
 hook.Add("PlayerUse", "G64_PLAYER_USE", function(ply, ent)
-	--if IsValid(ply.MarioEnt) and ply.IsMario == true and useBlacklist[ent:GetClass()] then return false end
+	if IsValid(ply.MarioEnt) and ply.IsMario == true and useBlacklist[ent:GetClass()] and ply:Health() > 0 then return false end
 end)
 
 hook.Add("PlayerDisconnected", "G64_PLY_DISCONNECT", function(ply)
@@ -173,6 +187,51 @@ end)
 hook.Add("PlayerDeath", "G64_PLAYER_DEATH", function(victim, inflictor, attacker)
 	if IsValid(victim.MarioEnt) then
 		victim.MarioEnt:Remove()
+	end
+end)
+
+hook.Add("PlayerEnteredVehicle", "G64_PLAYER_ENTERED_VEHICLE", function(ply, veh, role)
+	if IsValid(ply.MarioEnt) and ply.IsMario == true then
+		local vPos, vAng = GetSeatPoint(veh, role)
+		local mario = ply.MarioEnt
+
+		local driveable = ply:GetVehicle():GetClass() ~= "prop_vehicle_prisoner_pod"
+		-- Check for simfphys cars
+		for k,v in ipairs(ents.FindInSphere(veh:GetPos(), 10)) do
+			if v:GetClass() == "gmod_sent_vehicle_fphysics_base" then
+				driveable = true
+			end
+		end
+
+		if driveable then
+			mario:SetParent(ply)
+			mario:SetLocalAngles(Angle(0,-90,0))
+			local offset = ply:GetPos()
+			offset:Add(ply:GetForward()*10)
+			offset:Add(ply:GetUp()*6)
+			mario:SetPos(offset)
+		else
+			mario:SetParent(veh)
+			mario:SetPos(vPos)
+			mario:SetAngles(veh:GetAngles())
+		end
+
+		ply:SetActiveWeapon(NULL)
+	end
+end)
+
+hook.Add("PlayerLeaveVehicle", "G64_PLAYER_LEFT_VEHICLE", function(ply, veh)
+	if IsValid(ply.MarioEnt) and ply.IsMario == true then
+		local mario = ply.MarioEnt
+		mario:SetParent(nil)
+		mario:SetAngles(Angle())
+
+		local mins, maxs = veh:WorldSpaceAABB()
+		local exitPt = veh:CheckExitPoint(120, maxs.z-mins.z+75)
+		if exitPt ~= nil then
+			ply:SetPos(exitPt)
+			mario:SetPos(exitPt)
+		end
 	end
 end)
 

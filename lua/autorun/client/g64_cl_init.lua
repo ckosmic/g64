@@ -229,7 +229,7 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 				end
 				
 				for j,surfaceId in pairs(surfaceIds[k]) do
-					if v:GetCollisionGroup() == COLLISION_GROUP_WORLD then
+					if v:GetCollisionGroup() == COLLISION_GROUP_WORLD or v.DontCollideWithMario == true or v == LocalPlayer():GetVehicle() then
 						libsm64.SurfaceObjectMove(surfaceId, noCollidePos, v:GetAngles())
 					else
 						libsm64.SurfaceObjectMove(surfaceId, v:GetPos(), v:GetAngles())

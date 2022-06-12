@@ -4,6 +4,7 @@ DEFINE_BASECLASS("base_anim")
 
 include("includes/g64_types.lua")
 include("includes/g64_config.lua")
+include("includes/g64_utils.lua")
 
 ENT.Type = "anim"
 ENT.Base = "base_entity"
@@ -179,6 +180,8 @@ function ENT:Initialize()
 	else
 		self:SetModel("models/hunter/misc/sphere075x075.mdl") -- Easiest circle shadow ever
 		self.Owner:SetMaxHealth(8)
+		self.Owner.PreviousWeapon = self.Owner:GetActiveWeapon()
+		self.Owner:SetActiveWeapon(NULL)
 		if self.Owner:FlashlightIsOn() then self.Owner:Flashlight(false) end
 	end
 	
@@ -230,6 +233,12 @@ function ENT:OnRemove()
 			self.Owner:SetMaxHealth(self.OwnerMaxHealth)
 			self.Owner:SetHealth(self.OwnerHealth)
 			drive.PlayerStopDriving(self.Owner)
+			if self.Owner:InVehicle() then self.Owner:ExitVehicle() end
+			if IsValid(self.Owner.PreviousWeapon) then
+				-- Workaround for weapon becoming invisible and unusable
+				self.Owner:SelectWeapon("weapon_crowbar")
+				self.Owner:SelectWeapon(self.Owner.PreviousWeapon:GetClass())
+			end
 		end
 		if IsValid(self.Owner) then
 			self.Owner:SetModelScale(1, 0)
@@ -863,7 +872,7 @@ if CLIENT then
 			
 			local marioState = stateBuffers[self.MarioId][self.bufferIndex + 1]
 			
-			self.marioPos = marioState[1]
+			if not lPlayer:InVehicle() then self.marioPos = marioState[1] end
 			self.marioForward = Vector(math.sin(marioState[3]), math.cos(math.pi*2 - marioState[3]), 0)
 			self.marioFlags = marioState[6]
 			self.marioParticleFlags = marioState[7]
@@ -948,32 +957,42 @@ if CLIENT then
 			end
 
 			if lPlayer:InVehicle() then
-				self.lerpedPos = lPlayer:GetPos()
-				self.lerpedPos:Add(lPlayer:GetForward()*13)
-				self.lerpedPos:Add(lPlayer:GetUp()*12)
-				self:SetNetworkOrigin(self.lerpedPos)
-				self:SetPos(self.lerpedPos)
-				self.InVehicle = true
-				libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_HOLD_BUTT_SLIDE_NO_CANCEL)
-				libsm64.SetMarioPosition(self.MarioId, self.lerpedPos)
-				local vForward = lPlayer:GetVehicle():GetForward()
-				local mAngle = math.atan2(vForward.y, vForward.x)/(math.pi*math.pi)
-				libsm64.SetMarioAngle(self.MarioId, mAngle)
-			elseif self.InVehicle == true then
-				self.InVehicle = false
-				libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_IDLE)
-			end
+				self.marioPos = lPlayer:GetPos()
+				if not self.InVehicle then
+					-- Runs once as soon as Mario enters a vehicle
+					self.InVehicle = true
+					self.BuildEntityFilter = true
+					libsm64.SetMarioAngle(self.MarioId, 0)
+				end
 
-			FindWaterLevel()
+				libsm64.SetMarioPosition(self.MarioId, lPlayer:GetPos())
+				libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_HOLD_BUTT_SLIDE_NO_CANCEL)
+			else
+				if self.InVehicle == true then
+					-- Runs once as soon as Mario exits a vehicle
+					self.InVehicle = false
+					self.BuildEntityFilter = true
+
+					libsm64.SetMarioPosition(self.MarioId, lPlayer:GetPos())
+					libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_IDLE)
+				end
+
+				FindWaterLevel()
+			end
 
 			self:NextThink(CurTime())
 			return true
 		end
 
 		net.Receive("G64_DAMAGEMARIO", function(len,ply)
-			local damage = net.ReadUInt(8)
-			local src = Vector(net.ReadInt(16), net.ReadInt(16), net.ReadInt(16))
-			libsm64.MarioTakeDamage(self.MarioId, damage, 0, src)
+			if self.marioInvincTimer < 3 then
+				if self.Owner:InVehicle() and not self.hasMetalCap then
+					libsm64.SetMarioInvincibility(self.MarioId, 30)
+				end
+				local damage = net.ReadUInt(8)
+				local src = Vector(net.ReadInt(16), net.ReadInt(16), net.ReadInt(16))
+				libsm64.MarioTakeDamage(self.MarioId, damage, 0, src)
+			end
 		end)
 
 		hook.Add("PostDrawOpaqueRenderables", "G64_RENDER_OPAQUES" .. self.MarioId, function(bDrawingDepth, bDrawingSkybox, isDraw3DSkybox)
@@ -1044,7 +1063,7 @@ if CLIENT then
 					maxs	= Vector( hullsize, hullsize, hullsize ),
 					filter	= entityfilter
 				})
-
+				
 				if tr.Hit then
 					neworigin = tr.HitPos
 				end
@@ -1055,22 +1074,48 @@ if CLIENT then
 			view.angles		= ply:EyeAngles()
 		end
 		
-		
+		local entFilter = {}
 		hook.Add("CalcView", "G64_CALCVIEW" .. self.MarioId, function(ply, origin, angles, fov, znear, zfar)
 			if FrameTime() == 0 then return self.view end
 			if gui.IsGameUIVisible() and game.SinglePlayer() then return self.view end
 			local t = (SysTime() - fixedTime) / G64_TICKRATE
 			if stateBuffers[self.MarioId][self.bufferIndex + 1][1] ~= nil then
-				self.lerpedPos = LerpVector(t, stateBuffers[self.MarioId][self.bufferIndex + 1][1], stateBuffers[self.MarioId][1-self.bufferIndex + 1][1]) + upOffset
-				self:SetNetworkOrigin(self.lerpedPos)
-				self:SetPos(self.lerpedPos)
+				if not ply:InVehicle() then
+					self.lerpedPos = LerpVector(t, stateBuffers[self.MarioId][self.bufferIndex + 1][1], stateBuffers[self.MarioId][1-self.bufferIndex + 1][1]) + upOffset
+					self:SetNetworkOrigin(self.lerpedPos)
+					self:SetPos(self.lerpedPos)
+				else
+					self.lerpedPos = lPlayer:GetPos()
+				end
 			end
 			
 			self.view.origin = self.lerpedPos
 			self.view.origin.z = self.view.origin.z + 50 / libsm64.ScaleFactor
 			self.view.angles = angles
-			
-			CalcView_ThirdPerson(self.view, 500, 2, ply, { self, ply, ply:GetVehicle() })
+
+			entFilter[1] = self
+			entFilter[2] = ply
+
+			if self.BuildEntityFilter == true then
+				local i = 3
+				if ply:InVehicle() then
+					for k,v in ipairs(ents.FindInSphere(self.lerpedPos, 100)) do
+						v.DontCollideWithMario = true
+						entFilter[i] = v
+						i = i + 1
+					end
+				else
+					for k,v in ipairs(entFilter) do
+						v.DontCollideWithMario = false
+					end
+					table.Empty(entFilter)
+					entFilter[1] = self
+					entFilter[2] = ply
+				end
+				self.BuildEntityFilter = false
+			end
+
+			CalcView_ThirdPerson(self.view, 500, 2, ply, entFilter)
 			return self.view
 		end)
 		
