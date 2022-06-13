@@ -62,6 +62,17 @@ function ENT:Initialize()
 	self:AddEFlags(EFL_DIRTY_ABSTRANSFORM)
 	
 	self.Owner = self:GetOwner()
+
+	if not IsValid(self.Owner) then
+		local plys = player.GetAll()
+		local dist = 99999
+		for k,v in ipairs(plys) do
+			if self:GetPos():Distance(v:GetPos()) < dist then
+				self.Owner = v
+			end
+		end
+	end
+
 	self.OwnerHealth = self.Owner:Health()
 	self.OwnerMaxHealth = self.Owner:GetMaxHealth()
 	-- Remove Mario if already spawned or if the player is dead or driving
