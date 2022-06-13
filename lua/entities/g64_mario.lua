@@ -356,7 +356,11 @@ if CLIENT then
 	function ENT:MarioIsAttacking()
 		if MarioHasFlag(self.marioFlags, 0x00100000) or 
 		   MarioHasFlag(self.marioFlags, 0x00200000) or
-		   MarioHasFlag(self.marioFlags, 0x00400000) then
+		   MarioHasFlag(self.marioFlags, 0x00400000) or 
+		   self.marioAction == g64types.SM64MarioAction.ACT_DIVE or
+		   self.marioAction == g64types.SM64MarioAction.ACT_DIVE_SLIDE or
+		   self.marioAction == g64types.SM64MarioAction.ACT_SLIDE_KICK or
+		   self.marioAction == g64types.SM64MarioAction.ACT_SLIDE_KICK_SLIDE then
 			return true
 		else
 			return false
@@ -1027,10 +1031,21 @@ if CLIENT then
 				end
 				mesh.End()
 			end
-			
+
 			if GetConVar("g64_debug_rays"):GetBool() and self.marioCenter ~= nil and libsm64.ScaleFactor ~= nil then
-				render.DrawLine(self.marioCenter + Vector(0,0,60 / libsm64.ScaleFactor), self.marioCenter + Vector(0,0,60 / libsm64.ScaleFactor) + self.marioForward * (90 / libsm64.ScaleFactor), Color(0, 0, 255))
-				render.DrawWireframeBox(hitPos, Angle(0,0,0), Vector(-16, -16, -(40 / libsm64.ScaleFactor)), Vector(16, 16, 71), Color(255,255,255),true)
+				if self:MarioIsAttacking() then
+					local tr = util.TraceHull({
+						start = self.marioCenter,
+						endpos = self.marioCenter + self.marioForward * (90 / libsm64.ScaleFactor),
+						filter = { self, lPlayer },
+						mins = Vector(-16, -16, -(40 / libsm64.ScaleFactor)),
+						maxs = Vector(16, 16, 71),
+						mask = MASK_SHOT_HULL
+					})
+					
+					render.DrawLine(self.marioCenter, self.marioCenter + self.marioForward * (120 / libsm64.ScaleFactor), Color(0, 0, 255))
+					render.DrawWireframeBox(tr.HitPos, Angle(0,0,0), Vector(-25, -25, -(40 / libsm64.ScaleFactor)), Vector(25, 25, 71), Color(255,255,255),true)
+				end
 				if self.marioWaterLevel ~= nil then
 					render.DrawLine(Vector(self.lerpedPos[1],self.lerpedPos[2],self.marioWaterLevel), Vector(self.lerpedPos[1],self.lerpedPos[2],self.marioWaterLevel+100), Color(255,0,0))
 				end
