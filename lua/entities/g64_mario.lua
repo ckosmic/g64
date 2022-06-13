@@ -217,6 +217,7 @@ function ENT:OnRemove()
 				hook.Remove("PostDrawOpaqueRenderables", "G64_RENDER_OPAQUES" .. self.MarioId)
 				hook.Remove("CreateMove", "G64_CREATEMOVE" .. self.MarioId)
 				hook.Remove("CalcView", "G64_CALCVIEW" .. self.MarioId)
+				hook.Remove("CalcVehicleView", "G64_CALCVEHICLEVIEW" .. self.MarioId)
 				hook.Remove("HUDItemPickedUp", "SM64_ITEM_PICKED_UP" .. self.MarioId)
 				
 				self.MarioId = -10
@@ -1068,8 +1069,38 @@ if CLIENT then
 		
 		-- From drive_base.lua
 		CalcView_ThirdPerson = function( view, dist, hullsize, ply, entityfilter )
-			local neworigin = view.origin - ply:EyeAngles():Forward() * dist / libsm64.ScaleFactor
+			local newdist = dist / libsm64.ScaleFactor
+			local neworigin = view.origin - ply:EyeAngles():Forward() * newdist
 			
+			if ply:InVehicle() then
+				local veh = ply:GetVehicle()
+				local mins, maxs = veh:GetRenderBounds()
+				if ply.GetSimfphys then
+					-- If in a simfphys vehicle, count its vehicle base in the dist calculation
+					local vehiclebase = ply:GetSimfphys()
+					if IsValid(vehiclebase) then
+						mins, maxs = vehiclebase:GetRenderBounds()
+						entityfilter = function(e)
+							local c = e:GetClass()
+							local collide = not c:StartWith( "prop_physics" ) and not c:StartWith( "prop_dynamic" ) and not c:StartWith( "prop_ragdoll" ) and not e:IsVehicle() and not c:StartWith( "gmod_" ) and not c:StartWith( "player" )
+							return collide
+						end
+					end
+				end
+				if ply.lfsGetPlane then
+					-- LFS Planes support, make the dist longer
+					local lfsPlane = ply:lfsGetPlane()
+					if IsValid(lfsPlane) then
+						mins, maxs = lfsPlane:GetRenderBounds()
+					end
+				end
+				local radius = (mins-maxs):Length()
+				radius = radius + radius * veh:GetCameraDistance()
+				if radius < newdist then radius = newdist end
+
+				neworigin = view.origin - ply:EyeAngles():Forward() * radius
+			end
+
 			if hullsize && hullsize > 0 then
 				local tr = util.TraceHull({
 					start	= view.origin,

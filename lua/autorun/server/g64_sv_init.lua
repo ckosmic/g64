@@ -217,6 +217,7 @@ hook.Add("PlayerEnteredVehicle", "G64_PLAYER_ENTERED_VEHICLE", function(ply, veh
 		end
 
 		ply:SetActiveWeapon(NULL)
+		ply:CrosshairDisable()
 	end
 end)
 
@@ -232,6 +233,8 @@ hook.Add("PlayerLeaveVehicle", "G64_PLAYER_LEFT_VEHICLE", function(ply, veh)
 			ply:SetPos(exitPt)
 			mario:SetPos(exitPt)
 		end
+
+		ply:CrosshairDisable()
 	end
 end)
 
