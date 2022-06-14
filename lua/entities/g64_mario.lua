@@ -381,19 +381,21 @@ if CLIENT then
 
 	local function MatTypeToTerrainType(matType)
 		if matType == MAT_CONCRETE or matType == MAT_TILE or matType == MAT_PLASTIC or matType == MAT_GLASS or matType == MAT_METAL then
-			return g64types.SM64TerrainType.TERRAIN_STONE
-		elseif matType == MAT_DIRT or matType == MAT_GRASS or matType == MAT_FOLIAGE then
-			return g64types.SM64TerrainType.TERRAIN_GRASS
+			return 0, g64types.SM64TerrainType.TERRAIN_STONE
+		elseif matType == MAT_DIRT or matType == MAT_FOLIAGE then
+			return 0, g64types.SM64TerrainType.TERRAIN_GRASS
+		elseif matType == MAT_GRASS then
+			return 1, g64types.SM64TerrainType.TERRAIN_GRASS
 		elseif matType == MAT_SNOW then
-			return g64types.SM64TerrainType.TERRAIN_SNOW
+			return 0, g64types.SM64TerrainType.TERRAIN_SNOW
 		elseif matType == MAT_SAND then
-			return g64types.SM64TerrainType.TERRAIN_SAND
+			return 0, g64types.SM64TerrainType.TERRAIN_SAND
 		elseif matType == MAT_SLOSH then
-			return g64types.SM64TerrainType.TERRAIN_WATER
+			return 0, g64types.SM64TerrainType.TERRAIN_WATER
 		elseif matType == MAT_WOOD then
-			return g64types.SM64TerrainType.TERRAIN_SPOOKY
+			return 0, g64types.SM64TerrainType.TERRAIN_SPOOKY
 		else
-			return g64types.SM64TerrainType.TERRAIN_STONE
+			return 0, g64types.SM64TerrainType.TERRAIN_STONE
 		end
 	end
 
@@ -519,7 +521,8 @@ if CLIENT then
 		self.view = {
 			origin = Vector(),
 			angles = Angle(),
-			fov = nil
+			fov = nil,
+			inited = false
 		}
 	end
 
@@ -691,7 +694,9 @@ if CLIENT then
 			self.IsRemote = false
 			self:SetRenderBounds(self.Mins, self.Maxs)
 			tickCount = 0
-			
+
+			libsm64.SetMarioAngle(self.MarioId, math.rad(lPlayer:GetAngles()[2]-90)/(math.pi*math.pi))
+
 			vertexBuffers[self.MarioId] = { {}, {} }
 			stateBuffers[self.MarioId] = { {}, {} }
 			
@@ -846,7 +851,13 @@ if CLIENT then
 					mask = MASK_SOLID
 				})
 				if tr.Entity.G64SurfaceType == nil and tr.Entity.G64TerrainType == nil then
-					libsm64.SetMarioFloorOverrides(self.MarioId, MatTypeToTerrainType(tr.MatType), g64types.SM64SurfaceType.SURFACE_DEFAULT)
+					local alt, terrType = MatTypeToTerrainType(tr.MatType)
+					local surfType = g64types.SM64SurfaceType.SURFACE_DEFAULT
+					if alt == 1 then
+						surfType = g64types.SM64SurfaceType.SURFACE_NOISE_DEFAULT
+					end
+
+					libsm64.SetMarioFloorOverrides(self.MarioId, terrType, surfType)
 				else
 					-- Turn off overrides
 					libsm64.SetMarioFloorOverrides(self.MarioId, 0x7, 0x39)
