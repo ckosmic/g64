@@ -50,6 +50,7 @@ if CLIENT then
     g64utils.MarioTargetMat = CreateMaterial("g64/libsm64_mario_target", "UnlitGeneric", {
         ["$basetexture"] = g64utils.MarioTargetRT:GetName(),
         ["$vertexalpha"] = "1",
+        ["$alpha"] = "0.5"
     })
 
     -- What's shown after opaque objects have been rendered
@@ -57,11 +58,13 @@ if CLIENT then
     g64utils.FramebufferMat = CreateMaterial("g64/libsm64_framebuffer", "UnlitGeneric", {
         ["$basetexture"] = g64utils.FramebufferRT:GetName(),
         ["$vertexalpha"] = "1",
-        ["$alpha"] = "0.5"
+        ["$alpha"] = "1"
     })
 
     hook.Add("PostDrawOpaqueRenderables", "G64_COPY_FRAMEBUFFER", function(bDrawingDepth, bDrawingSkybox, isDraw3DSkybox)
+        render.SetWriteDepthToDestAlpha(false)
         render.CopyRenderTargetToTexture(g64utils.FramebufferRT) -- Used for vanish cap translucency
+
         render.PushRenderTarget(g64utils.MarioTargetRT)
         render.OverrideAlphaWriteEnable(true, true)
         render.ClearDepth()
@@ -71,17 +74,17 @@ if CLIENT then
     end)
     hook.Add("PostDrawTranslucentRenderables", "G64_OVERLAY_FRAMEBUFFER", function(bDrawingDepth, bDrawingSkybox, isDraw3DSkybox)
         -- Overlay a translucent image of opaque entites that have been rendered under Mario
-        render.PushRenderTarget(g64utils.FramebufferRT)
+        render.SetWriteDepthToDestAlpha(false)
+        render.PushRenderTarget(g64utils.MarioTargetRT)
         cam.Start2D()
-            render.OverrideBlend(true, BLEND_DST_COLOR, BLEND_ZERO, BLENDFUNC_ADD, BLEND_ZERO, BLEND_SRC_COLOR, BLENDFUNC_ADD)
-            surface.SetDrawColor(255,255,255,255)
-            surface.SetMaterial(g64utils.MarioTargetMat)
-            surface.DrawTexturedRect(0,0,ScrW(),ScrH())
+            render.OverrideBlend(true, BLEND_DST_COLOR, BLEND_SRC_ALPHA, BLENDFUNC_MIN)
+            render.DrawTextureToScreen(g64utils.FramebufferRT)
             render.OverrideBlend(false)
         cam.End2D()
         render.PopRenderTarget()
+        render.SetWriteDepthToDestAlpha(true)
 
-        render.SetMaterial(g64utils.FramebufferMat)
+        render.SetMaterial(g64utils.MarioTargetMat)
         render.DrawScreenQuad()
     end)
 end

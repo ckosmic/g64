@@ -502,28 +502,30 @@ if CLIENT then
 		if self.marioInvincTimer ~= nil and self.marioInvincTimer >= 3 and self.bufferIndex == 1 and self.marioHealth ~= 255 then return end -- Hitstun blinking effect
 		
 		if self.hasVanishCap == true then
-			-- Vanish cap silhouette when inside or behind objects
-			render.SetStencilWriteMask( 0xFF )
-			render.SetStencilTestMask( 0xFF )
-			render.SetStencilReferenceValue( 0 )
-			render.SetStencilCompareFunction( STENCIL_ALWAYS )
-			render.SetStencilPassOperation( STENCIL_KEEP )
-			render.SetStencilFailOperation( STENCIL_KEEP )
-			render.SetStencilZFailOperation( STENCIL_KEEP )
-			render.ClearStencil()
+			if self.Owner == LocalPlayer() then
+				-- Vanish cap silhouette when inside or behind objects
+				render.SetStencilWriteMask( 0xFF )
+				render.SetStencilTestMask( 0xFF )
+				render.SetStencilReferenceValue( 0 )
+				render.SetStencilCompareFunction( STENCIL_ALWAYS )
+				render.SetStencilPassOperation( STENCIL_KEEP )
+				render.SetStencilFailOperation( STENCIL_KEEP )
+				render.SetStencilZFailOperation( STENCIL_KEEP )
+				render.ClearStencil()
 
-			render.SetStencilEnable( true )
-			render.SetStencilReferenceValue( 57 )
-			render.SetStencilCompareFunction( STENCIL_ALWAYS )
-			render.SetStencilZFailOperation( STENCIL_REPLACE )
+				render.SetStencilEnable( true )
+				render.SetStencilReferenceValue( 57 )
+				render.SetStencilCompareFunction( STENCIL_ALWAYS )
+				render.SetStencilZFailOperation( STENCIL_REPLACE )
 
-			render.SetWriteDepthToDestAlpha(false)
-			render.MaterialOverride(g64utils.WhiteMat)
-			self:DrawModel()
+				render.SetWriteDepthToDestAlpha(false)
+				render.MaterialOverride(g64utils.WhiteMat)
+				self:DrawModel()
 
-			render.SetStencilCompareFunction(STENCIL_EQUAL)
-			render.ClearBuffersObeyStencil(70, 70, 70, 100, false)
-			render.SetStencilEnable(false)
+				render.SetStencilCompareFunction(STENCIL_EQUAL)
+				render.ClearBuffersObeyStencil(70, 70, 70, 100, false)
+				render.SetStencilEnable(false)
+			end
 
 			-- Draw Mario to translucency mask
 			render.PushRenderTarget(g64utils.MarioTargetRT)
