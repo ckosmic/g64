@@ -50,7 +50,7 @@ function ENT:Think()
 		self.Owner = ents.GetByIndex(self:GetOwner():EntIndex())
 		self:SetOwner(nil)
 	end
-	if self:GetPos():DistToSqr(self.Owner:GetPos()) < 4000 then
+	if self.Owner ~= nil and self:GetPos():DistToSqr(self.Owner:GetPos()) < 4000 then
 		if CLIENT then 
 			if self.Owner.MarioEnt ~= nil and self.Owner.IsMario == true and self.Owner.MarioEnt.hasMetalCap == false then
 				self.Owner.MarioEnt.EnableMetalCap = true

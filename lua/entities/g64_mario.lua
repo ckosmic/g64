@@ -991,27 +991,29 @@ if CLIENT then
 		local upVec = Vector(0,0,10000)
 		local downVec = Vector(0,0,-10000)
 		local function FindWaterLevel()
-			local offset = upVec
-			if self.lerpedPos.z > self.marioWaterLevel and tickCount > 2 then
-				offset = downVec
-			end
 			local tr = util.TraceLine({
 				start = self.lerpedPos,
-				endpos = self.lerpedPos + offset,
+				endpos = self.lerpedPos + upVec,
 				mask = MASK_WATER
 			})
 			
 			if tr.Hit == true then
-				if offset == downVec and tr.Fraction < 1 then
+				self.marioWaterLevel = self.lerpedPos.z + upVec.z * tr.FractionLeftSolid
+				libsm64.SetMarioWaterLevel(self.MarioId, self.marioWaterLevel * libsm64.ScaleFactor)
+			else
+				local tr = util.TraceLine({
+					start = self.lerpedPos,
+					endpos = self.lerpedPos + downVec,
+					mask = MASK_WATER
+				})
+				
+				if tr.Hit == true and tr.Fraction < 1 then
 					self.marioWaterLevel = tr.HitPos.z
 					libsm64.SetMarioWaterLevel(self.MarioId, self.marioWaterLevel * libsm64.ScaleFactor)
-				elseif offset == upVec and tr.Hit == true then
-					self.marioWaterLevel = self.lerpedPos.z + upVec.z * tr.FractionLeftSolid
-					libsm64.SetMarioWaterLevel(self.MarioId, self.marioWaterLevel * libsm64.ScaleFactor)
+				else
+					self.marioWaterLevel = -1000000
+					libsm64.SetMarioWaterLevel(self.MarioId, -1000000)
 				end
-			else
-				self.marioWaterLevel = -1000000
-				libsm64.SetMarioWaterLevel(self.MarioId, -1000000)
 			end
 		end
 		
