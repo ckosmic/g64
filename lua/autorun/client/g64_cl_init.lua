@@ -206,7 +206,7 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	local prevTimeScale = -1.0
 	local prevScaleFactor = -1.0
 	local noCollidePos = Vector(0, 0, -32768)
-	hook.Add("G64GameTick", "G64_UPDATE_COLLISION", function()
+	local function UpdatePropCollisions()
 		for k,v in ipairs(libsm64.EntMeshes) do
 			local trashCan = {}
 			if IsValid(v) == false or not (libsm64.AllowedEnts[v:GetClass()] or libsm64.AllowedBrushEnts[v:GetClass()]) then
@@ -228,8 +228,13 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 					end
 				end
 				
+				local mario = LocalPlayer().MarioEnt
 				for j,surfaceId in pairs(surfaceIds[k]) do
-					if v:GetCollisionGroup() == COLLISION_GROUP_WORLD or v.DontCollideWithMario == true or v == LocalPlayer():GetVehicle() then
+					if v:GetCollisionGroup() == COLLISION_GROUP_WORLD or 
+					   v.DontCollideWithMario == true or 
+					   v == LocalPlayer():GetVehicle() or 
+					   (IsValid(mario) and mario.hasVanishCap == true) then
+
 						libsm64.SurfaceObjectMove(surfaceId, noCollidePos, v:GetAngles())
 					else
 						libsm64.SurfaceObjectMove(surfaceId, v:GetPos(), v:GetAngles())
@@ -241,6 +246,10 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 				table.remove(libsm64.EntMeshes, trashCan[i])
 			end
 		end
+	end
+
+	hook.Add("G64GameTick", "G64_UPDATE_COLLISION", function()
+		UpdatePropCollisions()
 
 		for i = 1, 8 do
 			if propQueue[1] == nil then break end
@@ -318,6 +327,10 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 				table.remove(allEnts, i)
 			end
 		end
+	end)
+
+	hook.Add("G64UpdatePropCollisions", "G64_INSTANT_PROP_UPDATE", function()
+		UpdatePropCollisions()
 	end)
 	
 	hook.Add("PreCleanupMap", "G64_CLEANUP_ENTITIES", function()

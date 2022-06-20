@@ -76,4 +76,5 @@ list.Set( "SurfaceTypes", "#tool.g64surfacechanger.hard_very_slippery", { g64sur
 list.Set( "SurfaceTypes", "#tool.g64surfacechanger.hard_not_slippery", { g64surfacechanger_g64surfacetype = g64types.SM64SurfaceType.SURFACE_HARD_NOT_SLIPPERY } ) 	
 list.Set( "SurfaceTypes", "#tool.g64surfacechanger.vertical_wind", { g64surfacechanger_g64surfacetype = g64types.SM64SurfaceType.SURFACE_VERTICAL_WIND } )  
 list.Set( "SurfaceTypes", "#tool.g64surfacechanger.horizontal_wind", { g64surfacechanger_g64surfacetype = g64types.SM64SurfaceType.SURFACE_HORIZONTAL_WIND } )  
-list.Set( "SurfaceTypes", "#tool.g64surfacechanger.noise_default", { g64surfacechanger_g64surfacetype = g64types.SM64SurfaceType.SURFACE_NOISE_DEFAULT } )   	
+list.Set( "SurfaceTypes", "#tool.g64surfacechanger.noise_default", { g64surfacechanger_g64surfacetype = g64types.SM64SurfaceType.SURFACE_NOISE_DEFAULT } )
+--list.Set( "SurfaceTypes", "#tool.g64surfacechanger.vanish_cap_walls", { g64surfacechanger_g64surfacetype = g64types.SM64SurfaceType.SURFACE_VANISH_CAP_WALLS } )  

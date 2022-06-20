@@ -14,6 +14,7 @@ ENT.Author = "ckosmic"
 ENT.Spawnable = true
 ENT.AdminSpawnable = true
 ENT.Category = "G64"
+ENT.RenderGroup = RENDERGROUP_BOTH
 
 ENT.MarioId = -10
 ENT.Mins = Vector(-64, -64, -64)
@@ -234,7 +235,7 @@ function ENT:OnRemove()
 				self.MarioId = -10
 				if self.Owner ~= nil && IsValid(self.Owner) then -- Is null if local player disconnects
 					self.Owner:SetNoDraw(false)
-					if self.Owner == LocalPlayer() and (MarioHasFlag(self.marioFlags, 0x00000008) or MarioHasFlag(self.marioFlags, 0x00000004)) then
+					if self.Owner == LocalPlayer() and (MarioHasFlag(self.marioFlags, 0x00000008) or MarioHasFlag(self.marioFlags, 0x00000004) or MarioHasFlag(self.marioFlags, 0x00000002)) then
 						StopAllTracks()
 					end
 				end
@@ -269,35 +270,7 @@ local upOffset = Vector(0,0,5)
 
 if CLIENT then
 
-	local marioRT = GetRenderTargetEx("Mario_Texture", 1024, 64, RT_SIZE_OFFSCREEN, MATERIAL_RT_DEPTH_NONE, 0, 0, IMAGE_FORMAT_RGBA8888)
-	local marioMat = CreateMaterial("g64/libsm64_mario_lighting", "VertexLitGeneric", {
-		["$model"] = "1",
-		["$basetexture"] = "vgui/white",
-		["$receiveflashlight"] = "1",
-		Proxies = {
-			["Clamp"] = { min="0.0", max="1.0", srcVar1="$color2", resultVar="$color2" },
-		}
-	})
-	local vertMat = CreateMaterial("g64/libsm64_mario_verts", "UnlitGeneric", {
-		["$model"] = "1",
-		["$basetexture"] = "vgui/white",
-		["$vertexcolor"] = "1",
-		["$receiveflashlight"] = "1",
-	})
-	local texMat = CreateMaterial("g64/libsm64_mario_tex", "VertexLitGeneric", {
-		["$model"] = "1",
-		["$decal"] = "1",
-		["$alphatest"] = "1",
-		["$nocull"] = "1",
-		["$receiveflashlight"] = "1",
-	})
-	local debugMat = CreateMaterial("g64/libsm64_debug", "UnlitGeneric", {
-		["$model"] = "1",
-		["$basetexture"] = "vgui/white",
-		["$decal"] = "1",
-		["$vertexcolor"] = "1"
-	})
-	local metalMat = Material("debug/env_cubemap_model")
+	
 
 	function ENT:CreateMarioTexture(textureData)
 		local TEX_WIDTH = 1024
@@ -305,11 +278,9 @@ if CLIENT then
 		local CONTENT_WIDTH = 704
 		local oldW = ScrW()
 		local oldH = ScrH()
-		texMat:SetTexture("$basetexture", marioRT)
-		
 		local oldRT = render.GetRenderTarget()
 		
-		render.SetRenderTarget(marioRT)
+		render.SetRenderTarget(g64utils.MarioRT)
 		render.SetViewPort(0, 0, TEX_WIDTH, TEX_HEIGHT)
 		render.Clear(0, 0, 0, 0)
 		cam.Start2D()
@@ -518,6 +489,7 @@ if CLIENT then
 		self.wingsIndices = {}
 		self.hasWingCap = false
 		self.hasMetalCap = false
+		self.hasVanishCap = false
 		self.view = {
 			origin = Vector(),
 			angles = Angle(),
@@ -526,16 +498,48 @@ if CLIENT then
 		}
 	end
 
-	function ENT:Draw()
+	function ENT:DrawEither()
 		if self.marioInvincTimer ~= nil and self.marioInvincTimer >= 3 and self.bufferIndex == 1 and self.marioHealth ~= 255 then return end -- Hitstun blinking effect
 		
-		if self.hasMetalCap then
-			-- Lighting
-			render.MaterialOverride(marioMat)
+		if self.hasVanishCap == true then
+			-- Vanish cap silhouette when inside or behind objects
+			render.SetStencilWriteMask( 0xFF )
+			render.SetStencilTestMask( 0xFF )
+			render.SetStencilReferenceValue( 0 )
+			render.SetStencilCompareFunction( STENCIL_ALWAYS )
+			render.SetStencilPassOperation( STENCIL_KEEP )
+			render.SetStencilFailOperation( STENCIL_KEEP )
+			render.SetStencilZFailOperation( STENCIL_KEEP )
+			render.ClearStencil()
+
+			render.SetStencilEnable( true )
+			render.SetStencilReferenceValue( 57 )
+			render.SetStencilCompareFunction( STENCIL_ALWAYS )
+			render.SetStencilZFailOperation( STENCIL_REPLACE )
+
+			render.SetWriteDepthToDestAlpha(false)
+			render.MaterialOverride(g64utils.WhiteMat)
 			self:DrawModel()
 
+			render.SetStencilCompareFunction(STENCIL_EQUAL)
+			render.ClearBuffersObeyStencil(70, 70, 70, 100, false)
+			render.SetStencilEnable(false)
+
+			-- Draw Mario to translucency mask
+			render.PushRenderTarget(g64utils.MarioTargetRT)
+			render.MaterialOverride(g64utils.WhiteMat)
+			self:DrawModel()
+			render.PopRenderTarget()
+		end
+
+		if self.hasMetalCap then
+			-- Lighting
+			render.MaterialOverride(g64utils.MarioLightingMat)
+			self:DrawModel()
+
+			-- Metal material
 			render.OverrideBlend(true, BLEND_DST_COLOR, BLEND_ZERO, BLENDFUNC_ADD)
-			render.MaterialOverride(metalMat)
+			render.MaterialOverride(g64utils.MetalMat)
 			self:DrawModel()
 			render.OverrideBlend(false)
 
@@ -546,29 +550,42 @@ if CLIENT then
 			end
 		else
 			-- Lighting
+			render.MaterialOverride(g64utils.MarioLightingMat)
 			self:DrawModel()
 
 			-- Vertex colors
+			render.MaterialOverride(g64utils.MarioVertsMat)
 			render.OverrideBlend(true, BLEND_DST_COLOR, BLEND_ZERO, BLENDFUNC_ADD)
-			render.MaterialOverride(vertMat)
 			self:DrawModel()
 			render.OverrideBlend(false)
 			
 			-- Textures
-			render.MaterialOverride(texMat)
+			render.MaterialOverride(g64utils.MarioTexMat)
 			self:DrawModel()
 			if self.WingsMesh then
+				render.SetMaterial(g64utils.MarioWingsMat)
 				cam.PushModelMatrix( self:GetWorldTransformMatrix() )
 				self.WingsMesh:Draw()
 				cam.PopModelMatrix()
 			end
 		end
-		
+
 		render.MaterialOverride(nil)
+		render.OverrideBlend(false)
+	end
+
+	function ENT:Draw()
+		if self.hasVanishCap == true then return end
+		self:DrawEither()
+	end
+
+	function ENT:DrawTranslucent()
+		if self.hasVanishCap == false then return end
+		self:DrawEither()
 	end
 	
 	function ENT:GetRenderMesh()
-		return { Mesh = self.Mesh, Material = marioMat }
+		return { Mesh = self.Mesh, Material = g64utils.MarioLightingMat }
 	end
 
 	function ENT:StartRemoteMario()
@@ -608,6 +625,7 @@ if CLIENT then
 			
 			self.hasWingCap = MarioHasFlag(self.marioFlags, 0x00000008)
 			self.hasMetalCap = MarioHasFlag(self.marioFlags, 0x00000004)
+			self.hasVanishCap = MarioHasFlag(self.marioFlags, 0x00000002)
 			
 			tickCount = tickCount + 1
 			
@@ -850,17 +868,32 @@ if CLIENT then
 					filter = { self, lPlayer },
 					mask = MASK_SOLID
 				})
+
+				if self.hasVanishCap == true then 
+					-- Prevent Mario from getting stuck in props
+					if tr.Entity.SM64_UPLOADED == true then
+						libsm64.MarioExtendCapTime(self.MarioId, 1)
+					end
+					tr = util.TraceLine({
+						start = self.marioCenter,
+						endpos = self.marioCenter + trDownVec,
+						filter = { self, lPlayer },
+						mask = MASK_PLAYERSOLID_BRUSHONLY
+					})
+				end
+
 				if tr.Entity.G64SurfaceType == nil and tr.Entity.G64TerrainType == nil then
 					local alt, terrType = MatTypeToTerrainType(tr.MatType)
 					local surfType = g64types.SM64SurfaceType.SURFACE_DEFAULT
+					
 					if alt == 1 then
 						surfType = g64types.SM64SurfaceType.SURFACE_NOISE_DEFAULT
 					end
 
-					libsm64.SetMarioFloorOverrides(self.MarioId, terrType, surfType)
+					libsm64.SetMarioFloorOverrides(self.MarioId, terrType, surfType, 0)
 				else
 					-- Turn off overrides
-					libsm64.SetMarioFloorOverrides(self.MarioId, 0x7, 0x39)
+					libsm64.SetMarioFloorOverrides(self.MarioId, 0x7, 0x39, 0)
 				end
 			end
 		end
@@ -875,6 +908,14 @@ if CLIENT then
 				libsm64.MarioEnableCap(self.MarioId, 0x00000004, GetConVar("g64_metalcap_timer"):GetInt(), GetConVar("g64_cap_music"):GetBool())
 				self.EnableMetalCap = false
 				self.hasMetalCap = true
+			end
+			if self.EnableVanishCap == true then
+				libsm64.MarioEnableCap(self.MarioId, 0x00000002, GetConVar("g64_vanishcap_timer"):GetInt(), GetConVar("g64_cap_music"):GetBool())
+				self.EnableVanishCap = false
+				self.hasVanishCap = true
+				-- Update prop collisions instantly or else Mario will teleport
+				-- to the center of the map
+				hook.Call("G64UpdatePropCollisions")
 			end
 		end
 		
@@ -908,6 +949,7 @@ if CLIENT then
 			self.colorTable = g64config.Config.MarioColors
 			self.hasWingCap = MarioHasFlag(self.marioFlags, 0x00000008)
 			self.hasMetalCap = MarioHasFlag(self.marioFlags, 0x00000004)
+			self.hasVanishCap = MarioHasFlag(self.marioFlags, 0x00000002)
 			self.marioCenter = Vector(self.marioPos)
 			self.marioCenter.z = self.marioCenter.z + 50 / libsm64.ScaleFactor
 			self.marioAction = marioState[5]
@@ -948,7 +990,7 @@ if CLIENT then
 		local downVec = Vector(0,0,-10000)
 		local function FindWaterLevel()
 			local offset = upVec
-			if self.lerpedPos.z > self.marioWaterLevel && tickCount > 2 then
+			if self.lerpedPos.z > self.marioWaterLevel and tickCount > 2 then
 				offset = downVec
 			end
 			local tr = util.TraceLine({
@@ -1013,7 +1055,7 @@ if CLIENT then
 
 		net.Receive("G64_DAMAGEMARIO", function(len,ply)
 			if self.marioInvincTimer < 3 then
-				if self.Owner:InVehicle() and not self.hasMetalCap then
+				if self.Owner:InVehicle() and not self.hasMetalCap and not self.hasVanishCap then
 					libsm64.SetMarioInvincibility(self.MarioId, 30)
 				end
 				local damage = net.ReadUInt(8)
@@ -1031,7 +1073,7 @@ if CLIENT then
 				local mapvertcount = #mapverts
 				if mapvertcount == 0 then return end
 				math.randomseed(0)
-				render.SetMaterial(debugMat) -- Apply the material
+				render.SetMaterial(g64utils.DebugMat) -- Apply the material
 				render.ResetModelLighting(1,1,1)
 				mesh.Begin(MATERIAL_TRIANGLES, math.Min(mapvertcount/3, 8192))
 				for i = 1, math.Min(mapvertcount, 32768) do
@@ -1044,7 +1086,7 @@ if CLIENT then
 				local dispverts = libsm64.DispVertices[marioDispChunk.x][marioDispChunk.y]
 				local dispvertcount = #dispverts
 				if dispvertcount == 0 then return end
-				render.SetMaterial(debugMat) -- Apply the material
+				render.SetMaterial(g64utils.DebugMat) -- Apply the material
 				render.ResetModelLighting(1,1,1)
 				mesh.Begin(MATERIAL_TRIANGLES, math.Min(dispvertcount/3, 8192))
 				for i = 1, math.Min(dispvertcount, 32768) do
@@ -1123,13 +1165,17 @@ if CLIENT then
 				neworigin = view.origin - ply:EyeAngles():Forward() * radius
 			end
 
+			local newmask = MASK_SOLID
+			if self.hasVanishCap == true then newmask = MASK_PLAYERSOLID_BRUSHONLY end
+
 			if hullsize && hullsize > 0 then
 				local tr = util.TraceHull({
 					start	= view.origin,
 					endpos	= neworigin,
 					mins	= Vector( hullsize, hullsize, hullsize ) * -1,
 					maxs	= Vector( hullsize, hullsize, hullsize ),
-					filter	= entityfilter
+					filter	= entityfilter,
+					mask    = newmask
 				})
 				
 				if tr.Hit then
@@ -1192,6 +1238,7 @@ if CLIENT then
 				TransmitColors()
 			end
 		end)
+
 	end
 
 else

@@ -10,6 +10,7 @@ PrecacheParticleSystem("mario_horiz_star")
 PrecacheParticleSystem("mario_vert_star")
 PrecacheParticleSystem("mario_fire")
 
+CreateConVar("g64_vanishcap_timer", "600", FCVAR_CHEAT, "Timer for the vanish cap (default: 600)", 0, 65535)
 CreateConVar("g64_metalcap_timer", "600", FCVAR_CHEAT, "Timer for the metal cap (default: 600)", 0, 65535)
 CreateConVar("g64_wingcap_timer", "1800", FCVAR_CHEAT, "Timer for the wing cap (default: 1800)", 0, 65535)
 CreateConVar("g64_process_displacements", "1", FCVAR_CHEAT)
