@@ -1233,7 +1233,7 @@ if CLIENT then
 				self.BuildEntityFilter = false
 			end
 
-			CalcView_ThirdPerson(self.view, 500, 2, ply, entFilter)
+			CalcView_ThirdPerson(self.view, 500, 4, ply, entFilter)
 			return self.view
 		end)
 		
