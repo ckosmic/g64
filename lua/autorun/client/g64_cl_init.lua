@@ -354,9 +354,9 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 			local result = libsm64.CompareVersions(lVersion, version)
 			if result == 0 then
 				if GetConVar("g64_auto_update"):GetBool() == true then
-					MsgC(Color(255, 100, 100), "[G64] Your libsm64-g64 package is outdated! Please reconnect to auto-download the newest version.\n")
+					chat.AddText(Color(255, 100, 100), "[G64] Your libsm64-g64 package is outdated! Please reconnect to auto-download the newest version.\n")
 				else
-					MsgC(Color(255, 100, 100), "[G64] Your libsm64-g64 package is outdated! Please download the latest version from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest", Color(255, 100, 100), " or turn auto-updates on in the G64 settings menu.\n")
+					chat.AddText(Color(255, 100, 100), "[G64] Your libsm64-g64 package is outdated! Please download the latest version from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest", Color(255, 100, 100), " or turn auto-updates on in the G64 settings menu.\n")
 				end
 				libsm64.PackageOutdated = true
 			elseif result == 1 then
