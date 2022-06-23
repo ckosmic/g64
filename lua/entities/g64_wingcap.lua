@@ -47,7 +47,7 @@ function ENT:Think()
 		self.Owner = ents.GetByIndex(self:GetOwner():EntIndex())
 		self:SetOwner(nil)
 	end
-	if self.Owner ~= nil and self:GetPos():DistToSqr(self.Owner:GetPos()) < 4000 then
+	if IsValid(self.Owner) and self:GetPos():DistToSqr(self.Owner:GetPos()) < 4000 then
 		if CLIENT then 
 			if self.Owner.MarioEnt ~= nil and self.Owner.IsMario == true and self.Owner.MarioEnt.hasWingCap == false then
 				self.Owner.MarioEnt.EnableWingCap = true
