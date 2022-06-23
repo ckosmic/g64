@@ -32,7 +32,7 @@ systimetimers.Create("G64_GAME_TICK", G64_TICKRATE, 0, function()
 end)
 
 hook.Add("G64AdjustedTimeScale", "G64_ADJUST_TIMESCALE", function(timeScale)
-	if timeScale == nil then timeScale = 1
+	if timeScale == nil then timeScale = 1 end
 	G64_TICKRATE = 1/33 / timeScale
 	systimetimers.Adjust("G64_GAME_TICK", G64_TICKRATE)
 end)

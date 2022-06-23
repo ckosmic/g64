@@ -87,4 +87,53 @@ if CLIENT then
         render.SetMaterial(g64utils.MarioTargetMat)
         render.DrawScreenQuad()
     end)
+
+    g64utils.Inputs = {}
+    g64utils.Inputs[1] = Vector()
+	g64utils.Inputs[2] = false
+	g64utils.Inputs[3] = false
+	g64utils.Inputs[4] = false
+    g64utils.GetInputTable = function()
+        local inputs = g64utils.Inputs
+        if input.IsButtonDown(GetConVar("g64_forward"):GetInt()) then
+            inputs[1].z = -1
+        elseif input.IsButtonDown(GetConVar("g64_back"):GetInt()) then
+            inputs[1].z = 1
+        else
+            inputs[1].z = 0
+        end
+        if input.IsButtonDown(GetConVar("g64_moveleft"):GetInt()) then
+            inputs[1].x = -1
+        elseif input.IsButtonDown(GetConVar("g64_moveright"):GetInt()) then
+            inputs[1].x = 1
+        else
+            inputs[1].x = 0
+        end
+        -- Normalize joystick inputs
+        local mag = math.sqrt((inputs[1].x * inputs[1].x) + (inputs[1].z * inputs[1].z))
+        if mag > 0 then
+            inputs[1].x = inputs[1].x / mag
+            inputs[1].z = inputs[1].z / mag
+        end
+
+        if input.IsButtonDown(GetConVar("g64_jump"):GetInt()) then
+            inputs[2] = true
+        else
+            inputs[2] = false
+        end
+
+        if input.IsButtonDown(GetConVar("g64_attack"):GetInt()) then
+            inputs[3] = true
+        else
+            inputs[3] = false
+        end
+
+        if input.IsButtonDown(GetConVar("g64_duck"):GetInt()) then
+            inputs[4] = true
+        else
+            inputs[4] = false
+        end
+
+        return g64utils.Inputs
+    end
 end

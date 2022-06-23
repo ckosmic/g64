@@ -33,6 +33,15 @@ if CLIENT then
 	CreateClientConVar("g64_global_volume", "1.0", true, false, "", 0.0, 1.0)
 	CreateClientConVar("g64_auto_update", "0", true, false)
 
+	CreateClientConVar("g64_forward", KEY_W, true)
+	CreateClientConVar("g64_back", KEY_S, true)
+	CreateClientConVar("g64_moveleft", KEY_A, true)
+	CreateClientConVar("g64_moveright", KEY_D, true)
+	CreateClientConVar("g64_jump", KEY_SPACE, true)
+	CreateClientConVar("g64_duck", KEY_LCONTROL, true)
+	CreateClientConVar("g64_attack", MOUSE_LEFT, true)
+	CreateClientConVar("g64_remove", KEY_R, true)
+
 	local moduleName = "gmcl_g64_win64.dll"
 	--if(jit.arch == "x86") then
 	--	moduleName = "gmcl_g64_win32.dll"

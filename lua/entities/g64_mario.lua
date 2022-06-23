@@ -895,7 +895,7 @@ if CLIENT then
 					libsm64.SetMarioFloorOverrides(self.MarioId, terrType, surfType, 0)
 				else
 					-- Turn off overrides
-					libsm64.SetMarioFloorOverrides(self.MarioId, 0x7, 0x39, 0)
+					libsm64.SetMarioFloorOverrides(self.MarioId, 0x7, 0x100, 0)
 				end
 			end
 		end
@@ -928,6 +928,8 @@ if CLIENT then
 		local function MarioTick()
 			if self.MarioId == nil then return end
 			fixedTime = SysTime()
+
+			inputs = g64utils.GetInputTable()
 		
 			local facing = lPlayer:GetAimVector()
 			if tickCount > 0 then
@@ -1016,19 +1018,8 @@ if CLIENT then
 				end
 			end
 		end
-		
-		-- Tick Mario at 30Hz
-		hook.Add("G64GameTick", "G64_MARIO_TICK" .. self.MarioId, function()
-			if FrameTime() == 0 then return end
-			MarioTick()
-		end)
 
-		function self:Think()
-			if FrameTime() == 0 then return end
-			if not gui.IsGameUIVisible() or not game.SinglePlayer() then
-				self:GenerateMesh()
-			end
-
+		local function VehicleTick()
 			if lPlayer:InVehicle() then
 				self.marioPos = lPlayer:GetPos()
 				if not self.InVehicle then
@@ -1052,6 +1043,26 @@ if CLIENT then
 
 				FindWaterLevel()
 			end
+		end
+		
+		-- Tick Mario at 30Hz
+		hook.Add("G64GameTick", "G64_MARIO_TICK" .. self.MarioId, function()
+			if FrameTime() == 0 then return end
+			MarioTick()
+		end)
+
+		function self:Think()
+			if FrameTime() == 0 then return end
+
+			if input.IsButtonDown(GetConVar("g64_remove"):GetInt()) then
+				self:RemoveFromClient()
+			end
+
+			if not gui.IsGameUIVisible() or not game.SinglePlayer() then
+				self:GenerateMesh()
+			end
+
+			VehicleTick()
 
 			self:NextThink(CurTime())
 			return true
@@ -1122,17 +1133,12 @@ if CLIENT then
 			
 		end)
 		
-		hook.Add("HUDItemPickedUp", "SM64_ITEM_PICKED_UP" .. self.MarioId, function(itemName)
+		hook.Add("HUDItemPickedUp", "G64_ITEM_PICKED_UP" .. self.MarioId, function(itemName)
 			if itemName == "item_healthkit" then
 				libsm64.MarioHeal(self.MarioId, 16)
 			elseif itemName == "item_healthvial" then
 				libsm64.MarioHeal(self.MarioId, 8)
 			end
-		end)
-
-		hook.Add("CreateMove", "G64_CREATEMOVE" .. self.MarioId, function(cmd)
-			local buttons = cmd:GetButtons()
-			inputs = libsm64.GetInputsFromButtonMask(buttons)
 		end)
 		
 		-- From drive_base.lua
