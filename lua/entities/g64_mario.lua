@@ -215,10 +215,6 @@ function ENT:Initialize()
 	end)
 end
 
-function MarioHasFlag(mask, flag)
-	return (bit.band(mask, flag) != 0)
-end
-
 function ENT:OnRemove()
 	if self.Invalid == false then
 		if CLIENT then
@@ -235,7 +231,7 @@ function ENT:OnRemove()
 				self.MarioId = -10
 				if self.Owner ~= nil && IsValid(self.Owner) then -- Is null if local player disconnects
 					self.Owner:SetNoDraw(false)
-					if self.Owner == LocalPlayer() and (MarioHasFlag(self.marioFlags, 0x00000008) or MarioHasFlag(self.marioFlags, 0x00000004) or MarioHasFlag(self.marioFlags, 0x00000002)) then
+					if self.Owner == LocalPlayer() and (g64utils.MarioHasFlag(self.marioFlags, 0x00000008) or g64utils.MarioHasFlag(self.marioFlags, 0x00000004) or g64utils.MarioHasFlag(self.marioFlags, 0x00000002)) then
 						StopAllTracks()
 					end
 				end
@@ -245,6 +241,7 @@ function ENT:OnRemove()
 			self.Owner:SetObserverMode(OBS_MODE_NONE)
 			self.Owner:SetMaxHealth(self.OwnerMaxHealth)
 			self.Owner:SetHealth(self.OwnerHealth)
+			self.Owner:SetNotSolid(false)
 			drive.PlayerStopDriving(self.Owner)
 			if self.Owner:InVehicle() then self.Owner:ExitVehicle() end
 			if IsValid(self.Owner.PreviousWeapon) then
@@ -338,9 +335,9 @@ if CLIENT then
 	end
 
 	function ENT:MarioIsAttacking()
-		if MarioHasFlag(self.marioFlags, 0x00100000) or 
-		   MarioHasFlag(self.marioFlags, 0x00200000) or
-		   MarioHasFlag(self.marioFlags, 0x00400000) or 
+		if g64utils.MarioHasFlag(self.marioFlags, 0x00100000) or 
+		   g64utils.MarioHasFlag(self.marioFlags, 0x00200000) or
+		   g64utils.MarioHasFlag(self.marioFlags, 0x00400000) or 
 		   self.marioAction == g64types.SM64MarioAction.ACT_DIVE or
 		   self.marioAction == g64types.SM64MarioAction.ACT_DIVE_SLIDE or
 		   self.marioAction == g64types.SM64MarioAction.ACT_SLIDE_KICK or
@@ -626,9 +623,9 @@ if CLIENT then
 			
 			libsm64.MarioAnimTick(self.animInfo, self.MarioId, self.bufferIndex, self.marioFlags, self.tickedPos)
 			
-			self.hasWingCap = MarioHasFlag(self.marioFlags, 0x00000008)
-			self.hasMetalCap = MarioHasFlag(self.marioFlags, 0x00000004)
-			self.hasVanishCap = MarioHasFlag(self.marioFlags, 0x00000002)
+			self.hasWingCap = g64utils.MarioHasFlag(self.marioFlags, 0x00000008)
+			self.hasMetalCap = g64utils.MarioHasFlag(self.marioFlags, 0x00000004)
+			self.hasVanishCap = g64utils.MarioHasFlag(self.marioFlags, 0x00000002)
 			
 			tickCount = tickCount + 1
 			
@@ -749,16 +746,16 @@ if CLIENT then
 
 		local function SpawnParticles()
 			if self.marioParticleFlags ~= 0 then
-				if MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_MIST_CIRCLE) then
+				if g64utils.MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_MIST_CIRCLE) then
 					ParticleEffect("ground_pound", self.marioPos, Angle())
 				end
-				if MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_DUST) then
+				if g64utils.MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_DUST) then
 					ParticleEffect("mario_dust", self.marioPos, Angle())
 				end
-				if MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_HORIZONTAL_STAR) then
+				if g64utils.MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_HORIZONTAL_STAR) then
 					ParticleEffect("mario_horiz_star", self.marioPos, Angle())
 				end
-				if MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_VERTICAL_STAR) or MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_TRIANGLE) then
+				if g64utils.MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_VERTICAL_STAR) or g64utils.MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_TRIANGLE) then
 					local tr = util.TraceLine({
 						start = self.marioCenter,
 						endpos = self.marioCenter + self.marioForward * (140 / libsm64.ScaleFactor),
@@ -767,7 +764,7 @@ if CLIENT then
 					local ang = tr.HitNormal:Angle()
 					ParticleEffect("mario_vert_star", tr.HitPos, ang)
 				end
-				if MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_FIRE) then
+				if g64utils.MarioHasFlag(self.marioParticleFlags, g64types.SM64ParticleType.PARTICLE_FIRE) then
 					ParticleEffect("mario_fire", self.marioPos, Angle())
 				end
 			end
@@ -956,9 +953,9 @@ if CLIENT then
 			self.marioHealth = bit.rshift(marioState[4], 8)
 			self.marioInvincTimer = marioState[8]
 			self.colorTable = g64config.Config.MarioColors
-			self.hasWingCap = MarioHasFlag(self.marioFlags, 0x00000008)
-			self.hasMetalCap = MarioHasFlag(self.marioFlags, 0x00000004)
-			self.hasVanishCap = MarioHasFlag(self.marioFlags, 0x00000002)
+			self.hasWingCap = g64utils.MarioHasFlag(self.marioFlags, 0x00000008)
+			self.hasMetalCap = g64utils.MarioHasFlag(self.marioFlags, 0x00000004)
+			self.hasVanishCap = g64utils.MarioHasFlag(self.marioFlags, 0x00000002)
 			self.marioCenter = Vector(self.marioPos)
 			self.marioCenter.z = self.marioCenter.z + 50 / libsm64.ScaleFactor
 			self.marioAction = marioState[5]

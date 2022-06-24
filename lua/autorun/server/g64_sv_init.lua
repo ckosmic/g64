@@ -81,6 +81,11 @@ net.Receive("G64_TRANSMITMOVE", function(len, ply)
 		end
 		
 		local flags = net.ReadUInt(32)
+		if g64utils.MarioHasFlag(flags, 0x00000002) then
+			ply:SetNotSolid(true)
+		else
+			ply:SetNotSolid(false)
+		end
 		
 		local filter = RecipientFilter()
 		filter:AddAllPlayers()

@@ -2,6 +2,10 @@ AddCSLuaFile()
 
 g64utils = {}
 
+g64utils.MarioHasFlag = function(mask, flag)
+    return (bit.band(mask, flag) != 0)
+end
+
 if CLIENT then
     g64utils.MarioRT = GetRenderTargetEx("Mario_Texture", 1024, 64, RT_SIZE_OFFSCREEN, MATERIAL_RT_DEPTH_NONE, 0, 0, IMAGE_FORMAT_RGBA8888)
     g64utils.MarioLightingMat = CreateMaterial("g64/libsm64_mario_lighting", "VertexLitGeneric", {
