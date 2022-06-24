@@ -136,4 +136,14 @@ if CLIENT then
 
         return g64utils.Inputs
     end
+    g64utils.GetZeroInputTable = function()
+        local inputs = g64utils.Inputs
+        inputs[1].z = 0
+        inputs[1].x = 0
+        inputs[2] = false
+        inputs[3] = false
+        inputs[4] = false
+
+        return g64utils.Inputs
+    end
 end

@@ -261,12 +261,14 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 		-- Update NPC/Player collision
 		for i=#objects,1,-1 do
 			v = objects[i]
-			if not IsValid(v) or v == LocalPlayer() or (v:IsPlayer() and v:Health() <= 0) or (v:IsNPC() and v:GetNoDraw()) then
+			if not IsValid(v) or v == LocalPlayer() or (v:IsNPC() and v:GetNoDraw()) then
 				if objectIds[i] ~= nil and objectIds[i] >= 0 then
 					libsm64.ObjectDelete(objectIds[i])
 					table.remove(objectIds, i)
 					table.remove(objects, i)
 				end
+			elseif (v:IsPlayer() and v:Health() <= 0) then
+				libsm64.ObjectMove(v.G64ObjectId, noCollidePos)
 			else
 				libsm64.ObjectMove(v.G64ObjectId, v:GetPos())
 			end

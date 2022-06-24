@@ -278,7 +278,7 @@ end)
 
 net.Receive("G64_REMOVEINVALIDMARIO", function(len, ply)
 	local ent = net.ReadEntity()
-	if ent ~= nil then ent:Remove() end
+	if IsValid(ent) then ent:Remove() end
 end)
 
 net.Receive("G64_RESETINVALIDPLAYER", function(len, ply)

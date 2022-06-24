@@ -321,6 +321,7 @@ if CLIENT then
 	inputs[4] = false
 
 	local fixedTime = 0
+	local spawnMenuOpen = false
 
 	local function PointInChunk(point)
 		local chunk = Vector()
@@ -929,7 +930,11 @@ if CLIENT then
 			if self.MarioId == nil then return end
 			fixedTime = SysTime()
 
-			inputs = g64utils.GetInputTable()
+			if spawnMenuOpen == false then
+				inputs = g64utils.GetInputTable()
+			else
+				inputs = g64utils.GetZeroInputTable()
+			end
 		
 			local facing = lPlayer:GetAimVector()
 			if tickCount > 0 then
@@ -1243,10 +1248,15 @@ if CLIENT then
 			return self.view
 		end)
 		
+		hook.Add("OnSpawnMenuOpen", "G64_SMENU_OPENED", function()
+			spawnMenuOpen = true
+		end)
+
 		hook.Add("OnSpawnMenuClose", "G64_SMENU_CLOSED", function()
 			if GetConVar("g64_upd_col_flag"):GetBool() then
 				TransmitColors()
 			end
+			spawnMenuOpen = false
 		end)
 
 	end
