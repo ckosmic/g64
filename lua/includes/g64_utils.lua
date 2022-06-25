@@ -1,5 +1,7 @@
 AddCSLuaFile()
 
+MAP_GEO_CACHE_VERSION = 1
+
 g64utils = {}
 
 g64utils.MarioHasFlag = function(mask, flag)
@@ -150,4 +152,62 @@ if CLIENT then
 
         return g64utils.Inputs
     end
+
+    g64utils.WriteMapCache = function(filename, map, disp)
+		if not file.Exists("g64/cache", "DATA") then
+			file.CreateDir("g64/cache")
+		end
+		local filename = "g64/cache/" .. game:GetMap() .. "_cache.dat"
+		local f = file.Open(filename, "wb", "DATA")
+
+		-- File header
+		f:WriteULong(MAP_GEO_CACHE_VERSION)
+		f:WriteShort(libsm64.XDelta)
+		f:WriteShort(libsm64.YDelta)
+		f:WriteShort(libsm64.WorldMin.x)
+        f:WriteShort(libsm64.WorldMin.y)
+        f:WriteShort(libsm64.WorldMin.z)
+		f:WriteShort(libsm64.WorldMax.x)
+        f:WriteShort(libsm64.WorldMax.y)
+        f:WriteShort(libsm64.WorldMax.z)
+		f:WriteUShort(libsm64.XChunks)
+		f:WriteUShort(libsm64.YChunks)
+		f:WriteUShort(libsm64.XDispChunks)
+		f:WriteUShort(libsm64.YDispChunks)
+
+		-- Map geometry data
+		for x=1, libsm64.XChunks, 1 do
+			for y=1, libsm64.YChunks, 1 do
+				local chunk = map[x][y]
+				f:WriteULong(#chunk)
+				for i=1, #chunk, 1 do
+					local vert = chunk[i]
+					f:WriteFloat(vert.x)
+					f:WriteFloat(vert.y)
+					f:WriteFloat(vert.z)
+				end
+			end
+		end
+		for x=1, libsm64.XDispChunks, 1 do
+			for y=1, libsm64.YDispChunks, 1 do
+				local chunk = disp[x][y]
+				f:WriteULong(#chunk)
+				for i=1, #chunk, 1 do
+					local vert = chunk[i]
+					f:WriteFloat(vert.x)
+					f:WriteFloat(vert.y)
+					f:WriteFloat(vert.z)
+				end
+			end
+		end
+		f:Close()
+	end
+    g64utils.LoadMapCache = function(filename)
+        if not file.Exists(filename, "DATA") then return false end
+
+		if libsm64.LoadMapCache(filename, MAP_GEO_CACHE_VERSION) == false then return false end
+        libsm64.MapLoaded = true
+
+        return true
+	end
 end

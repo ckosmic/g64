@@ -401,6 +401,9 @@ end)
 concommand.Add("g64_isinit", function(ply, cmd, args)
 	print(libsm64.IsGlobalInit())
 end)
+concommand.Add("g64_purge_map_cache", function(ply, cmd, args)
+	file.Delete("g64/cache/" .. game.GetMap() .. "_cache.dat")
+end)
 concommand.Add("g64_config_set", function(ply, cmd, args)
 	if g64config.Config[args[1]] == nil then MsgC(Color(255,100,100), "[G64] Config contains no key: ", args[1], "\n") return end
 	
