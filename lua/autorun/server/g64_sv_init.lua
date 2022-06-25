@@ -193,7 +193,7 @@ hook.Add("PlayerEnteredVehicle", "G64_PLAYER_ENTERED_VEHICLE", function(ply, veh
 		local vPos, vAng = GetSeatPoint(veh, role)
 		local mario = ply.MarioEnt
 
-		local driveable = ply:GetVehicle():GetClass() ~= "prop_vehicle_prisoner_pod"
+		local driveable = veh:GetClass() ~= "prop_vehicle_prisoner_pod"
 		-- Check for simfphys cars
 		for k,v in ipairs(ents.FindInSphere(veh:GetPos(), 10)) do
 			if v:GetClass() == "gmod_sent_vehicle_fphysics_base" then
@@ -214,8 +214,10 @@ hook.Add("PlayerEnteredVehicle", "G64_PLAYER_ENTERED_VEHICLE", function(ply, veh
 			mario:SetAngles(veh:GetAngles())
 		end
 
+		veh:SetThirdPersonMode(true)
 		ply:SetActiveWeapon(NULL)
 		ply:CrosshairDisable()
+		drive.PlayerStopDriving(ply)
 	end
 end)
 
@@ -233,6 +235,10 @@ hook.Add("PlayerLeaveVehicle", "G64_PLAYER_LEFT_VEHICLE", function(ply, veh)
 		end
 
 		ply:CrosshairDisable()
+		ply.MarioEnt:SetPos(ply:GetPos())
+		drive.PlayerStartDriving(ply, ply.MarioEnt, "G64_DRIVE")
+		ply.MarioEnt:SetAngles(Angle())
+		ply:SetObserverMode(OBS_MODE_CHASE)
 	end
 end)
 

@@ -406,7 +406,11 @@ if CLIENT then
 		local wingIndex = 1
 		local uvOffset = 2/704
 		local hasWingCap = self.hasWingCap
-		
+
+		--local lPlayer = LocalPlayer()
+		--local inVehicle = self.Owner == lPlayer and lPlayer:InVehicle() and lPlayer:GetVehicle():GetThirdPersonMode() == false
+
+		-- Create main mesh
 		mesh.Begin(self.Mesh, MATERIAL_TRIANGLES, triCount)
 		for i = 1, vertCount do
 			if posTab[i] == nil or lastPosTab[i] == nil then
@@ -417,21 +421,26 @@ if CLIENT then
 				self.wingsIndices[wingIndex] = i
 				wingIndex = wingIndex + 1
 			else
-				col = myColorTable[colTab[i]]
-				
-				if interpolation then
-					mesh.Position(fLerpVector(t, posTab[i], lastPosTab[i]))
-				else
-					mesh.Position(posTab[i])
-				end
-				mesh.Normal(normTab[i])
-				mesh.TexCoord(0, uTab[i]+uvOffset, vTab[i]+uvOffset)
-				mesh.Color(col[1], col[2], col[3], 255)
-				mesh.AdvanceVertex()
+				--if inVehicle == true and (colTab[i] == 3 or colTab[i] == 4) then
+					
+				--else
+					col = myColorTable[colTab[i]]
+					
+					if interpolation then
+						mesh.Position(fLerpVector(t, posTab[i], lastPosTab[i]))
+					else
+						mesh.Position(posTab[i])
+					end
+					mesh.Normal(normTab[i])
+					mesh.TexCoord(0, uTab[i]+uvOffset, vTab[i]+uvOffset)
+					mesh.Color(col[1], col[2], col[3], 255)
+					mesh.AdvanceVertex()
+				--end
 			end
 		end
 		mesh.End()
 		
+		-- Create wings mesh
 		if hasWingCap == true then
 			local j = 1
 			local wingsIndices = self.wingsIndices
@@ -918,6 +927,48 @@ if CLIENT then
 				hook.Call("G64UpdatePropCollisions")
 			end
 		end
+
+		local entFilter = {}
+		local function MarioCalcView(ply, origin, angles, fov, znear, zfar)
+			if FrameTime() == 0 then return self.view end
+			if gui.IsGameUIVisible() and game.SinglePlayer() then return self.view end
+			local t = (SysTime() - fixedTime) / G64_TICKRATE
+			if stateBuffers[self.MarioId][self.bufferIndex + 1][1] ~= nil then
+				if not ply:InVehicle() then
+					self.lerpedPos = LerpVector(t, stateBuffers[self.MarioId][self.bufferIndex + 1][1], stateBuffers[self.MarioId][1-self.bufferIndex + 1][1]) + upOffset
+					self:SetNetworkOrigin(self.lerpedPos)
+					self:SetPos(self.lerpedPos)
+				end
+			end
+			
+			self.view.origin = self.lerpedPos
+			self.view.origin.z = self.view.origin.z + 50 / libsm64.ScaleFactor
+			self.view.angles = angles
+
+			entFilter[1] = self
+			entFilter[2] = ply
+
+			CalcView_ThirdPerson(self.view, 500, 4, ply, entFilter)
+			return self.view
+		end
+
+		local function BuildEntityFilter()
+			local i = 3
+			if ply:InVehicle() then
+				for k,v in ipairs(ents.FindInSphere(self.lerpedPos, 100)) do
+					v.DontCollideWithMario = true
+					entFilter[i] = v
+					i = i + 1
+				end
+			else
+				for k,v in ipairs(entFilter) do
+					v.DontCollideWithMario = false
+				end
+				table.Empty(entFilter)
+				entFilter[1] = self
+				entFilter[2] = ply
+			end
+		end
 		
 		local hitPos = Vector()
 		local animInfo
@@ -1024,10 +1075,14 @@ if CLIENT then
 		local function VehicleTick()
 			if lPlayer:InVehicle() then
 				self.marioPos = lPlayer:GetPos()
+				self.lerpedPos = lPlayer:GetPos()
 				if not self.InVehicle then
 					-- Runs once as soon as Mario enters a vehicle
 					self.InVehicle = true
-					self.BuildEntityFilter = true
+					BuildEntityFilter()
+
+					hook.Remove("CalcView", "G64_CALCVIEW" .. self.MarioId)
+
 					libsm64.SetMarioAngle(self.MarioId, 0)
 				end
 
@@ -1037,7 +1092,9 @@ if CLIENT then
 				if self.InVehicle == true then
 					-- Runs once as soon as Mario exits a vehicle
 					self.InVehicle = false
-					self.BuildEntityFilter = true
+					BuildEntityFilter()
+
+					hook.Add("CalcView", "G64_CALCVIEW" .. self.MarioId, MarioCalcView)
 
 					libsm64.SetMarioPosition(self.MarioId, lPlayer:GetPos())
 					libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_IDLE)
@@ -1147,36 +1204,6 @@ if CLIENT then
 		CalcView_ThirdPerson = function( view, dist, hullsize, ply, entityfilter )
 			local newdist = dist / libsm64.ScaleFactor
 			local neworigin = view.origin - ply:EyeAngles():Forward() * newdist
-			
-			if ply:InVehicle() then
-				local veh = ply:GetVehicle()
-				local mins, maxs = veh:GetRenderBounds()
-				if ply.GetSimfphys then
-					-- If in a simfphys vehicle, count its vehicle base in the dist calculation
-					local vehiclebase = ply:GetSimfphys()
-					if IsValid(vehiclebase) then
-						mins, maxs = vehiclebase:GetRenderBounds()
-						entityfilter = function(e)
-							local c = e:GetClass()
-							local collide = not c:StartWith( "prop_physics" ) and not c:StartWith( "prop_dynamic" ) and not c:StartWith( "prop_ragdoll" ) and not e:IsVehicle() and not c:StartWith( "gmod_" ) and not c:StartWith( "player" )
-							return collide
-						end
-					end
-				end
-				if ply.lfsGetPlane then
-					-- LFS Planes support, make the dist longer
-					local lfsPlane = ply:lfsGetPlane()
-					if IsValid(lfsPlane) then
-						mins, maxs = lfsPlane:GetRenderBounds()
-					end
-				end
-				local radius = (mins-maxs):Length()
-				radius = radius + radius * veh:GetCameraDistance()
-				if radius < newdist then radius = newdist end
-
-				neworigin = view.origin - ply:EyeAngles():Forward() * radius
-			end
-
 			local newmask = MASK_SOLID
 			if self.hasVanishCap == true then newmask = MASK_PLAYERSOLID_BRUSHONLY end
 
@@ -1199,51 +1226,8 @@ if CLIENT then
 			view.origin		= neworigin
 			view.angles		= ply:EyeAngles()
 		end
-		
-		local entFilter = {}
-		hook.Add("CalcView", "G64_CALCVIEW" .. self.MarioId, function(ply, origin, angles, fov, znear, zfar)
-			if FrameTime() == 0 then return self.view end
-			if gui.IsGameUIVisible() and game.SinglePlayer() then return self.view end
-			local t = (SysTime() - fixedTime) / G64_TICKRATE
-			if stateBuffers[self.MarioId][self.bufferIndex + 1][1] ~= nil then
-				if not ply:InVehicle() then
-					self.lerpedPos = LerpVector(t, stateBuffers[self.MarioId][self.bufferIndex + 1][1], stateBuffers[self.MarioId][1-self.bufferIndex + 1][1]) + upOffset
-					self:SetNetworkOrigin(self.lerpedPos)
-					self:SetPos(self.lerpedPos)
-				else
-					self.lerpedPos = lPlayer:GetPos()
-				end
-			end
-			
-			self.view.origin = self.lerpedPos
-			self.view.origin.z = self.view.origin.z + 50 / libsm64.ScaleFactor
-			self.view.angles = angles
 
-			entFilter[1] = self
-			entFilter[2] = ply
-
-			if self.BuildEntityFilter == true then
-				local i = 3
-				if ply:InVehicle() then
-					for k,v in ipairs(ents.FindInSphere(self.lerpedPos, 100)) do
-						v.DontCollideWithMario = true
-						entFilter[i] = v
-						i = i + 1
-					end
-				else
-					for k,v in ipairs(entFilter) do
-						v.DontCollideWithMario = false
-					end
-					table.Empty(entFilter)
-					entFilter[1] = self
-					entFilter[2] = ply
-				end
-				self.BuildEntityFilter = false
-			end
-
-			CalcView_ThirdPerson(self.view, 500, 4, ply, entFilter)
-			return self.view
-		end)
+		hook.Add("CalcView", "G64_CALCVIEW" .. self.MarioId, MarioCalcView)
 		
 		hook.Add("OnSpawnMenuOpen", "G64_SMENU_OPENED", function()
 			spawnMenuOpen = true
