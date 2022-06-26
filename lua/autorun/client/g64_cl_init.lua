@@ -4,7 +4,7 @@ include("includes/g64_config.lua")
 
 -- Make level transitions work
 local spawnMarioOnceInited = false
-hook.Add("InitPostEntity", "G64_INIT_POST_ENTITY", function()
+hook.Add("InitPostEntity", "G64_CL_INIT_POST_ENTITY", function()
 	local marios = ents.FindByClass("g64_mario")
 	for k,v in ipairs(marios) do
 		if v.Owner:SteamID() == LocalPlayer():SteamID() then
@@ -14,7 +14,7 @@ hook.Add("InitPostEntity", "G64_INIT_POST_ENTITY", function()
 			v.Owner.IsMario = false
 			v.Owner.SM64LoadedMap = false
 			spawnMarioOnceInited = true
-			InitializeWorld(0)
+			--InitializeWorld(0)
 		end
 	end
 end)
@@ -158,6 +158,24 @@ local function AddPropMesh(prop)
 	prop:PhysicsDestroy()
 end
 
+local function RotMatToAng(mat)
+	local sy = math.sqrt(mat:GetField(1, 1) * mat:GetField(1, 1) + mat:GetField(2, 1) * mat:GetField(2, 1))
+	local x, y, z
+	if not (sy < 0.000001) then
+		x = math.atan2(mat:GetField(3, 2), mat:GetField(3, 3))
+		y = math.atan2(-mat:GetField(3, 1), sy)
+		z = math.atan2(mat:GetField(2, 1), mat:GetField(1, 1))
+	else
+		x = math.atan2(-mat:GetField(2, 3), mat:GetField(2, 2))
+		y = math.atan2(-mat:GetField(3, 1), sy)
+		z = 0
+	end
+	x = math.fmod(math.deg(x) + 180, 360)
+	y = math.fmod(math.deg(y) + 180, 360)
+	z = math.fmod(math.deg(z) + 180, 360)
+	return Angle(x, z, y)
+end
+
 hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	
 	function libsm64.AddColliderToQueue(ent)
@@ -203,6 +221,20 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	hook.Add("OnEntityCreated", "G64_ENTITY_CREATED", function(ent)
 		ProcessNewEntity(ent)
 	end)
+
+	--hook.Add("HUDPaint", "ugh", function(ent)
+	--	local e = libsm64.EntMeshes[1]
+	--	if IsValid(e) then
+	--		surface.SetFont( "DermaLarge" )
+	--		surface.SetTextPos( 400, 128 )
+	--		surface.SetTextColor( 0, 0, 0 )
+	--		local a = e:GetAngles()
+	--		debugoverlay.Line(e:GetPos(), e:GetPos() + a:Up() * 400, 0.1, Color(0,0,255))
+	--		debugoverlay.Line(e:GetPos(), e:GetPos() + a:Forward() * 400, 0.1, Color(0,255,0))
+	--		debugoverlay.Line(e:GetPos(), e:GetPos() + a:Right() * 400, 0.1, Color(255,0,0))
+	--		surface.DrawText( "" .. math.Round(a.z) .. ", " .. math.Round(-a.y) .. ", " .. math.Round(-a.x) )
+	--	end
+	--end)
 	
 	local prevTimeScale = -1.0
 	local prevScaleFactor = -1.0
@@ -238,7 +270,17 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 
 						libsm64.SurfaceObjectMove(surfaceId, noCollidePos, v:GetAngles())
 					else
+						--local mat = v:GetWorldTransformMatrix()
+						--local w = math.sqrt(1.0 + mat:GetField(1,1) + mat:GetField(2,2) + mat:GetField(3,3)) / 2.0
+						--local w4 = 4.0 * w
+						--local x = (mat:GetField(3,2) - mat:GetField(2,3)) / w4
+						--local y = (mat:GetField(1,3) - mat:GetField(3,1)) / w4
+						--local z = (mat:GetField(2,1) - mat:GetField(1,2)) / w4
+						--print(x,y,z,w)
+
+						--local a = RotMatToAng(v:GetWorldTransformMatrix())
 						libsm64.SurfaceObjectMove(surfaceId, v:GetPos(), v:GetAngles())
+						--libsm64.SurfaceObjectMoveQ(surfaceId, v:GetPos(), x,y,z,w)
 					end
 				end
 			end
@@ -343,7 +385,6 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 			end
 		end
 		table.Empty(libsm64.EntMeshes)
-		hook.Remove("G64GameTick", "G64_UPDATE_COLLISION")
 	end)
 
 	local request = {

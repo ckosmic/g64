@@ -55,7 +55,7 @@ if CLIENT then
 		libsm64.ScaleFactor = 2
 	end
 
-	local function LoadMapGeometry(timeout)
+	local function LoadAndCacheMapGeometry(timeout)
 		local mapStatus = "[G64] Getting map geometry..."
 		if not LocalPlayer().SM64LoadedMap then
 			net.Start("G64_UPLOADCOLORS")
@@ -422,11 +422,11 @@ if CLIENT then
 						print("[G64] Loaded cached map geometry!")
 					else
 						hook.Remove("HUDPaint", "G64_DRAW_MAP_STATUS")
-						LoadMapGeometry(timeout)
+						LoadAndCacheMapGeometry(timeout)
 					end
 				end)
 			else
-				LoadMapGeometry(timeout)
+				LoadAndCacheMapGeometry(timeout)
 			end
 		else
 			libsm64 = {}
@@ -435,11 +435,9 @@ if CLIENT then
 		end
 	end
 
-	hook.Add("Think", "G64_INITIALIZE", function()
-		hook.Remove("Think", "G64_INITIALIZE")
+	hook.Add("InitPostEntity", "G64_INIT_POST_ENTITY", function()
 		g64config.Load()
-		
-		InitializeWorld(2)
+		InitializeWorld(0)
 	end)
 else
 	net.Receive("G64_LOADMAPGEO", function(len, ply)
