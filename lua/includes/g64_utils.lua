@@ -210,4 +210,11 @@ if CLIENT then
 
         return true
 	end
+
+    g64utils.IsSpawnMenuOpen = function()
+        if g_SpawnMenu:IsValid() and g_SpawnMenu:IsVisible() then
+            return true
+        end
+        return false
+    end
 end

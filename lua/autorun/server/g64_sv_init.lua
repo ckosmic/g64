@@ -289,6 +289,7 @@ end)
 
 net.Receive("G64_REMOVEINVALIDMARIO", function(len, ply)
 	local ent = net.ReadEntity()
+	ply:ExitVehicle()
 	if IsValid(ent) then ent:Remove() end
 end)
 

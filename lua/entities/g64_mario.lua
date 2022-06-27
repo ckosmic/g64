@@ -318,7 +318,6 @@ if CLIENT then
 	inputs[4] = false
 
 	local fixedTime = 0
-	local spawnMenuOpen = false
 
 	local function PointInChunk(point)
 		local chunk = Vector()
@@ -954,7 +953,7 @@ if CLIENT then
 
 		local function BuildEntityFilter()
 			local i = 3
-			if ply:InVehicle() then
+			if self.Owner:InVehicle() then
 				for k,v in ipairs(ents.FindInSphere(self.lerpedPos, 100)) do
 					v.DontCollideWithMario = true
 					entFilter[i] = v
@@ -966,7 +965,7 @@ if CLIENT then
 				end
 				table.Empty(entFilter)
 				entFilter[1] = self
-				entFilter[2] = ply
+				entFilter[2] = self.Owner
 			end
 		end
 		
@@ -978,7 +977,7 @@ if CLIENT then
 			if self.MarioId == nil then return end
 			fixedTime = SysTime()
 
-			if spawnMenuOpen == false then
+			if g64utils.IsSpawnMenuOpen() == false then
 				inputs = g64utils.GetInputTable()
 			else
 				inputs = g64utils.GetZeroInputTable()
@@ -1228,16 +1227,11 @@ if CLIENT then
 		end
 
 		hook.Add("CalcView", "G64_CALCVIEW" .. self.MarioId, MarioCalcView)
-		
-		hook.Add("OnSpawnMenuOpen", "G64_SMENU_OPENED", function()
-			spawnMenuOpen = true
-		end)
 
 		hook.Add("OnSpawnMenuClose", "G64_SMENU_CLOSED", function()
 			if GetConVar("g64_upd_col_flag"):GetBool() then
 				TransmitColors()
 			end
-			spawnMenuOpen = false
 		end)
 
 	end
