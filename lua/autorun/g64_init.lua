@@ -401,30 +401,29 @@ if CLIENT then
 			
 			local filename = "g64/cache/" .. game:GetMap() .. "_cache.dat"
 			if file.Exists(filename, "DATA") then
-				timer.Simple(timeout, function()
-					local mapStatus = "[G64] Loading map geometry from cache..."
-					print(mapStatus)
+				local mapStatus = "[G64] Loading map geometry from cache..."
+				print(mapStatus)
 
-					hook.Add("HUDPaint", "G64_DRAW_MAP_STATUS", function()
-						surface.SetFont("Default")
-						w, h = surface.GetTextSize(mapStatus)
-	
-						surface.SetDrawColor( 0, 0, 0, 200 )
-						surface.DrawRect( ScrW()-(w+40), ScrH()-50, w+20, 38 )
-						surface.SetTextColor(255, 255, 255)
-						surface.SetTextPos(ScrW()-(w+30), ScrH()-40)
-						surface.DrawText(mapStatus)
-					end)
+				hook.Add("HUDPaint", "G64_DRAW_MAP_STATUS", function()
+					surface.SetFont("Default")
+					w, h = surface.GetTextSize(mapStatus)
 
-					if g64utils.LoadMapCache(filename) == true then
-						hook.Run("G64Initialized")
-						hook.Remove("HUDPaint", "G64_DRAW_MAP_STATUS")
-						print("[G64] Loaded cached map geometry!")
-					else
-						hook.Remove("HUDPaint", "G64_DRAW_MAP_STATUS")
-						LoadAndCacheMapGeometry(timeout)
-					end
+					surface.SetDrawColor( 0, 0, 0, 200 )
+					surface.DrawRect( ScrW()-(w+40), ScrH()-50, w+20, 38 )
+					surface.SetTextColor(255, 255, 255)
+					surface.SetTextPos(ScrW()-(w+30), ScrH()-40)
+					surface.DrawText(mapStatus)
 				end)
+
+				if g64utils.LoadMapCache(filename) == true then
+					hook.Run("G64Initialized")
+					hook.Remove("HUDPaint", "G64_DRAW_MAP_STATUS")
+					print("[G64] Loaded cached map geometry!")
+				else
+					hook.Remove("HUDPaint", "G64_DRAW_MAP_STATUS")
+					LoadAndCacheMapGeometry(timeout)
+				end
+				
 			else
 				LoadAndCacheMapGeometry(timeout)
 			end
@@ -436,8 +435,9 @@ if CLIENT then
 	end
 
 	hook.Add("InitPostEntity", "G64_INIT_POST_ENTITY", function()
+		hook.Remove("InitPostEntity", "G64_INIT_POST_ENTITY")
 		g64config.Load()
-		InitializeWorld(0)
+		InitializeWorld(2)
 	end)
 else
 	net.Receive("G64_LOADMAPGEO", function(len, ply)
