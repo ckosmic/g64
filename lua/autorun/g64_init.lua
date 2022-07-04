@@ -33,6 +33,7 @@ if CLIENT then
 	CreateClientConVar("g64_cap_music", "1", true, false)
 	CreateClientConVar("g64_global_volume", "1.0", true, false, "", 0.0, 1.0)
 	CreateClientConVar("g64_auto_update", "0", true, false)
+	CreateClientConVar("g64_active_emotes", "", true, false)
 
 	CreateClientConVar("g64_forward", KEY_W, true)
 	CreateClientConVar("g64_back", KEY_S, true)
@@ -42,6 +43,8 @@ if CLIENT then
 	CreateClientConVar("g64_duck", KEY_LCONTROL, true)
 	CreateClientConVar("g64_attack", MOUSE_LEFT, true)
 	CreateClientConVar("g64_remove", KEY_R, true)
+	CreateClientConVar("g64_emotemenu", KEY_LSHIFT, true)
+	CreateClientConVar("g64_freemove", KEY_V, true)
 
 	local moduleName = "gmcl_g64_win64.dll"
 	--if(jit.arch == "x86") then

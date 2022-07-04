@@ -319,6 +319,10 @@ if CLIENT then
 
 	local fixedTime = 0
 
+	function ENT:SetMarioAction(action)
+		libsm64.SetMarioAction(self.MarioId, action)
+	end
+
 	local function PointInChunk(point)
 		local chunk = Vector()
 		chunk.x = math.min(math.floor((point.x - xOffset + 16384) / xDelta * xChunks) + 1, xChunks)
@@ -973,12 +977,25 @@ if CLIENT then
 		local animInfo
 		local trMins = Vector(-16, -16, -4)
 		local trMaxs = Vector(16, 16, 4)
+		local vDown = false
 		local function MarioTick()
 			if self.MarioId == nil then return end
 			fixedTime = SysTime()
 
 			if g64utils.IsSpawnMenuOpen() == false then
 				inputs = g64utils.GetInputTable()
+				if input.IsButtonDown(GetConVar("g64_freemove"):GetInt()) == true then
+					if vDown == false and GetConVar("sv_cheats"):GetBool() then
+						if self.marioAction == g64types.SM64MarioAction.ACT_DEBUG_FREE_MOVE then
+							libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_IDLE)
+						else
+							libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_DEBUG_FREE_MOVE)
+						end
+						vDown = true
+					end
+				else
+					vDown = false
+				end
 			else
 				inputs = g64utils.GetZeroInputTable()
 			end
@@ -1205,6 +1222,7 @@ if CLIENT then
 			local neworigin = view.origin - ply:EyeAngles():Forward() * newdist
 			local newmask = MASK_SOLID
 			if self.hasVanishCap == true then newmask = MASK_PLAYERSOLID_BRUSHONLY end
+			if self.marioAction == g64types.SM64MarioAction.ACT_DEBUG_FREE_MOVE then newmask = MASK_CURRENT end
 
 			if hullsize && hullsize > 0 then
 				local tr = util.TraceHull({

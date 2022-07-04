@@ -268,6 +268,18 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		header_remove:SetTextColor(Color(0,0,0))
 		local binder_remove = vgui.Create("DBinder")
 		binder_remove:SetConVar("g64_remove")
+
+		local header_emotemenu = vgui.Create("DLabel")
+		header_emotemenu:SetText("Emote menu")
+		header_emotemenu:SetTextColor(Color(0,0,0))
+		local binder_emotemenu = vgui.Create("DBinder")
+		binder_emotemenu:SetConVar("g64_emotemenu")
+
+		local header_freemove = vgui.Create("DLabel")
+		header_freemove:SetText("Free move")
+		header_freemove:SetTextColor(Color(0,0,0))
+		local binder_freemove = vgui.Create("DBinder")
+		binder_freemove:SetConVar("g64_freemove")
 		
 		
 		panel:AddItem(header_forward)
@@ -286,5 +298,87 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		panel:AddItem(binder_attack)
 		panel:AddItem(header_remove)
 		panel:AddItem(binder_remove)
+		panel:AddItem(header_emotemenu)
+		panel:AddItem(binder_emotemenu)
+		panel:AddItem(header_freemove)
+		panel:AddItem(binder_freemove)
+	end)
+
+	spawnmenu.AddToolMenuOption("Utilities", "G64", "G64_Emotes", "#Emotes", "", "", function(panel)
+		panel:ClearControls()
+		g64emote.LoadActiveEmotes()
+
+		local emoteStates = {}
+		for i=1, #g64emote.Emotes do
+			emoteStates[i] = false
+		end
+		for i=1, #g64emote.ActiveEmotes do
+			emoteStates[g64emote.ActiveEmotes[i]] = true
+		end
+
+		local emotesHeader = vgui.Create("DLabel")
+		emotesHeader:SetText("Emote List")
+		emotesHeader:SetTextColor(Color(0,0,0))
+		emotesHeader:SetFont("DermaDefaultBold")
+		emotesHeader:SetWrap(true)
+		emotesHeader:SetAutoStretchVertical(true)
+
+		local activeHeader = vgui.Create("DLabel")
+		activeHeader:SetText("Active Emotes")
+		activeHeader:SetTextColor(Color(0,0,0))
+		activeHeader:SetFont("DermaDefaultBold")
+		activeHeader:SetWrap(true)
+		activeHeader:SetAutoStretchVertical(true)
+		
+		local activeListView = vgui.Create("DListView")
+		activeListView:SetMultiSelect(false)
+		activeListView:AddColumn("Active Emote")
+		for i=1, #emoteStates do
+			if emoteStates[i] == true then
+				activeListView:AddLine(g64emote.Emotes[i].name)
+			end
+		end
+		activeListView.RefreshList = function()
+			activeListView:Clear()
+			table.Empty(g64emote.ActiveEmotes)
+			for i=1, #emoteStates do
+				if emoteStates[i] == true then
+					table.insert(g64emote.ActiveEmotes, i)
+					activeListView:AddLine(g64emote.Emotes[i].name)
+				end
+			end
+			GetConVar("g64_active_emotes"):SetString(table.concat(g64emote.ActiveEmotes, ","))
+			g64emote.CalculateSegments(#g64emote.ActiveEmotes)
+		end
+		activeListView:SetHeight(200)
+
+		local function AddActiveEmote(index)
+			emoteStates[index] = not emoteStates[index]
+			activeListView.RefreshList()
+		end
+
+		local emotesListView = vgui.Create("DListView")
+		emotesListView:SetMultiSelect(false)
+		emotesListView:AddColumn("Emote")
+		for i=1, #g64emote.Emotes do
+			emotesListView:AddLine(g64emote.Emotes[i].name)
+		end
+		emotesListView:SetHeight(400)
+		function emotesListView:DoDoubleClick(lineId, line)
+			AddActiveEmote(lineId)
+		end
+
+		local addButton = vgui.Create("DButton")
+		addButton:SetText("Add / Remove")
+		addButton.DoClick = function()
+			local rowIndex, pan = emotesListView:GetSelectedLine()
+			AddActiveEmote(rowIndex)
+		end
+
+		panel:AddItem(emotesHeader)
+		panel:AddItem(emotesListView)
+		panel:AddItem(addButton)
+		panel:AddItem(activeHeader)
+		panel:AddItem(activeListView)
 	end)
 end)

@@ -1,0 +1,7 @@
+"UnlitGeneric"
+{
+	"$basetexture" "vgui/radial"
+	"$alphatest" 1
+	"$allowalphatocoverage" 1
+	"$alpha" 0.9
+}
