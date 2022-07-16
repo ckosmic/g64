@@ -16,7 +16,6 @@ function ENT:SpawnFunction(ply, tr, ClassName)
 	local SpawnPos = tr.HitPos + tr.HitNormal * 16
 	
 	local ent = ents.Create(ClassName)
-	ent:SetOwner(ply)
 	ent:SetPos(SpawnPos)
 	ent:Spawn()
 	ent:Activate()
@@ -25,14 +24,14 @@ function ENT:SpawnFunction(ply, tr, ClassName)
 end
 
 function ENT:Initialize()
-	self.Owner = self:GetOwner()
-
 	self:SetModel( "models/player/items/humans/top_hat.mdl" )
 	self:SetColor( Color( 255, 255, 255 ) )
 	self:SetModelScale(2, 0)
 
 	self:SetMoveType( MOVETYPE_VPHYSICS )
 	self:SetSolid( SOLID_VPHYSICS )
+
+	self.Collected = false
 
 	if SERVER then self:PhysicsInit( SOLID_VPHYSICS ) end
 	
@@ -53,17 +52,16 @@ function ENT:DrawTranslucent()
 end
 
 function ENT:Think()
-	if self:GetOwner() ~= nil and self:GetOwner():EntIndex() > 0 then
-		self.Owner = ents.GetByIndex(self:GetOwner():EntIndex())
-		self:SetOwner(nil)
-	end
-	if IsValid(self.Owner) and self:GetPos():DistToSqr(self.Owner:GetPos()) < 4000 then
-		if CLIENT then 
-			if self.Owner.MarioEnt ~= nil and self.Owner.IsMario == true and self.Owner.MarioEnt.hasVanishCap == false then
-				self.Owner.MarioEnt.EnableVanishCap = true
+	if CLIENT then 
+		local ply = LocalPlayer()
+		local marioEnt = ply.MarioEnt
+		if g64utils.WithinBounds(self:GetPos(), ply:GetNetworkOrigin(), 40) and self.Collected == false then
+			if IsValid(ply.MarioEnt) and ply.IsMario == true and ply.MarioEnt.hasVanishCap == false then
+				ply.MarioEnt.EnableVanishCap = true
 			end
-			return
+
+			g64utils.RemoveFromClient(self)
+            self.Collected = true
 		end
-		self:Remove()
 	end
 end

@@ -10,13 +10,7 @@ PrecacheParticleSystem("mario_dust")
 PrecacheParticleSystem("mario_horiz_star")
 PrecacheParticleSystem("mario_vert_star")
 PrecacheParticleSystem("mario_fire")
-
-CreateConVar("g64_vanishcap_timer", "600", FCVAR_CHEAT, "Timer for the vanish cap (default: 600)", 0, 65535)
-CreateConVar("g64_metalcap_timer", "600", FCVAR_CHEAT, "Timer for the metal cap (default: 600)", 0, 65535)
-CreateConVar("g64_wingcap_timer", "1800", FCVAR_CHEAT, "Timer for the wing cap (default: 1800)", 0, 65535)
-CreateConVar("g64_process_displacements", "1", FCVAR_CHEAT)
-CreateConVar("g64_process_static_props", "1", FCVAR_CHEAT)
-CreateConVar("g64_scale_factor", "2.5", bit.bor(FCVAR_CHEAT, FCVAR_REPLICATED), "The scale factor of Mario (default: 2.5)", 0.1, 8)
+PrecacheParticleSystem("coin_pickup")
 
 REQUIRED_LIBSM64 = 3
 REQUIRED_MODULE = 2
@@ -24,27 +18,6 @@ REQUIRED_MODULE = 2
 if CLIENT then
 
 	include("includes/g64_config.lua")
-
-	CreateClientConVar("g64_debug_collision", "0", true, false)
-	CreateClientConVar("g64_debug_rays", "0", true, false)
-	CreateClientConVar("g64_interpolation", "1", true, false)
-	CreateClientConVar("g64_rompath", "", true, false)
-	CreateClientConVar("g64_upd_col_flag", "0", true, false)
-	CreateClientConVar("g64_cap_music", "1", true, false)
-	CreateClientConVar("g64_global_volume", "1.0", true, false, "", 0.0, 1.0)
-	CreateClientConVar("g64_auto_update", "0", true, false)
-	CreateClientConVar("g64_active_emotes", "", true, false)
-
-	CreateClientConVar("g64_forward", KEY_W, true)
-	CreateClientConVar("g64_back", KEY_S, true)
-	CreateClientConVar("g64_moveleft", KEY_A, true)
-	CreateClientConVar("g64_moveright", KEY_D, true)
-	CreateClientConVar("g64_jump", KEY_SPACE, true)
-	CreateClientConVar("g64_duck", KEY_LCONTROL, true)
-	CreateClientConVar("g64_attack", MOUSE_LEFT, true)
-	CreateClientConVar("g64_remove", KEY_R, true)
-	CreateClientConVar("g64_emotemenu", KEY_LSHIFT, true)
-	CreateClientConVar("g64_freemove", KEY_V, true)
 
 	local moduleName = "gmcl_g64_win64.dll"
 	--if(jit.arch == "x86") then
@@ -325,8 +298,10 @@ if CLIENT then
 						
 						libsm64.MapVertices = vertices
 						libsm64.DispVertices = dispVertices
-						mapStatus = "[G64] Caching map geometry..."
-						g64utils.WriteMapCache(filename, vertices, dispVertices)
+						if GetConVar("g64_disable_cache"):GetBool() == false then
+							mapStatus = "[G64] Caching map geometry..."
+							g64utils.WriteMapCache(filename, vertices, dispVertices)
+						end
 						libsm64.MapLoaded = true
 
 						hook.Remove("HUDPaint", "G64_DRAW_MAP_STATUS")
@@ -403,7 +378,7 @@ if CLIENT then
 			libsm64.SetGlobalVolume(GetConVar("g64_global_volume"):GetFloat())
 			
 			local filename = "g64/cache/" .. game:GetMap() .. "_cache.dat"
-			if file.Exists(filename, "DATA") then
+			if file.Exists(filename, "DATA") and GetConVar("g64_disable_cache"):GetBool() == false then
 				local mapStatus = "[G64] Loading map geometry from cache..."
 				print(mapStatus)
 

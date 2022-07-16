@@ -17,6 +17,10 @@ hook.Add("InitPostEntity", "G64_CL_INIT_POST_ENTITY", function()
 			--InitializeWorld(0)
 		end
 	end
+
+	LocalPlayer().CoinCount = 0
+	LocalPlayer().RedCoinCount = 0
+	LocalPlayer().LivesCount = 4
 end)
 
 hook.Add("G64Initialized", "G64_SPAWN_CHANGELEVEL_MARIO", function()
@@ -456,4 +460,10 @@ concommand.Add("g64_config_set", function(ply, cmd, args)
 	end
 	
 	g64config.Save()
+end)
+concommand.Add("g64_set_lives", function(ply, cmd, args)
+	local marioEnt = ply.MarioEnt
+	if IsValid(marioEnt) then
+		libsm64.MarioSetLives(marioEnt.MarioId, tonumber(args[1]))
+	end
 end)

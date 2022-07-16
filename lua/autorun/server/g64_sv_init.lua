@@ -1,26 +1,6 @@
 AddCSLuaFile()
 include("includes/g64_utils.lua")
 
-util.AddNetworkString("G64_LOADMAPGEO")
-util.AddNetworkString("G64_PLAYERREADY")
-util.AddNetworkString("G64_HURTNPC")
-util.AddNetworkString("G64_USEENTITY")
-util.AddNetworkString("G64_DAMAGEENTITY")
-util.AddNetworkString("G64_TRANSMITMOVE")
-util.AddNetworkString("G64_TRANSMITCAP")
-util.AddNetworkString("G64_DAMAGEMARIO")
-util.AddNetworkString("G64_INITLOCALCLIENT")
-util.AddNetworkString("G64_TICKREMOTEMARIO")
-util.AddNetworkString("G64_TRANSMITCOLORS")
-util.AddNetworkString("G64_UPDATEREMOTECOLORS")
-util.AddNetworkString("G64_UPDATEREMOTECAP")
-util.AddNetworkString("G64_REQUESTCOLORS")
-util.AddNetworkString("G64_UPLOADCOLORS")
-util.AddNetworkString("G64_REMOVEINVALIDMARIO")
-util.AddNetworkString("G64_CHANGESURFACEINFO")
-util.AddNetworkString("G64_RESETINVALIDPLAYER")
-util.AddNetworkString("G64_SPAWNMARIOATPLAYER")
-
 g64sv = {}
 g64sv.PlayerColors = {}
 g64sv.PlayerTick = {}
@@ -251,6 +231,18 @@ hook.Add("SetupMove", "G64_SETUP_MOVE", function(ply, mv, cmd)
 	end
 end)
 
+local function SpawnMarioAtPlayer(ply)
+	local mario = ents.Create("g64_mario")
+	mario:SetPos(ply:GetPos())
+	mario:SetOwner(ply)
+	mario:Spawn()
+	mario:Activate()
+	undo.Create("Mario")
+		undo.AddEntity(mario)
+		undo.SetPlayer(ply)
+	undo.Finish()
+end
+
 net.Receive("G64_UPLOADCOLORS", function(len, ply)
 	if g64sv.PlayerColors[ply] == nil then g64sv.PlayerColors[ply] = {} end
 	for i=1, 6 do
@@ -266,14 +258,34 @@ net.Receive("G64_DAMAGEENTITY", function(len, ply)
 	local minDmg = net.ReadUInt(8)
 
 	if not IsValid(victim) or !IsValid(mario) then return end
-	if victim:IsNPC() or victim:IsPlayer() or victim:Health() > 0 then
+	local victimHealth = victim:Health()
+	if victim:IsNPC() or victim:IsPlayer() or victimHealth > 0 then
 		local d = DamageInfo()
-		d:SetDamage(math.random(minDmg, minDmg+10))
+		local damage = math.random(minDmg, minDmg+10)
+		d:SetDamage(damage)
 		d:SetAttacker(mario)
 		d:SetInflictor(mario)
 		d:SetDamageType(DMG_GENERIC)
 		d:SetDamageForce(forceVec * 15000)
 		d:SetDamagePosition(hitPos)
+
+		local damageDiff = victimHealth - damage
+		if victim.IsMario then damageDiff = victimHealth - math.ceil(damage / 10) end
+
+		if (victim:IsNPC() or victim:IsPlayer()) and damageDiff <= 0 and victimHealth > 0 then
+			local coin = nil
+			if victim:IsPlayer() then coin = ents.Create("g64_bluecoin")
+			else coin = ents.Create("g64_yellowcoin") end
+			local entPos = victim:GetPos()
+			entPos:Add(Vector(0, 0, 30))
+			coin:SetPos(entPos)
+			coin:Spawn()
+			coin:SetNWEntity("IgnoreEnt", victim)
+			local coinPhys = coin:GetPhysicsObject()
+			if IsValid(coinPhys) then
+				coinPhys:SetVelocity(Vector(math.random(-100, 100), math.random(-100, 100), math.random(200, 400)))
+			end
+		end
 
 		victim:TakeDamageInfo(d)
 	elseif victim:GetPhysicsObject():IsValid() then
@@ -299,16 +311,40 @@ net.Receive("G64_RESETINVALIDPLAYER", function(len, ply)
 	ply.SM64LoadedMap = false
 end)
 
+net.Receive("G64_REMOVEFROMCLIENT", function(len, ply)
+	local ent = net.ReadEntity()
+	if IsValid(ent) then ent:Remove() end
+end)
+
 net.Receive("G64_SPAWNMARIOATPLAYER", function(len, ply)
-	local mario = ents.Create("g64_mario")
-	mario:SetPos(ply:GetPos())
-	mario:SetOwner(ply)
-	mario:Spawn()
-	mario:Activate()
-	undo.Create("Mario")
-		undo.AddEntity(mario)
-		undo.SetPlayer(ply)
-	undo.Finish()
+	SpawnMarioAtPlayer(ply)
+end)
+
+net.Receive("G64_RESPAWNMARIO", function(len, ply)
+	local ent = net.ReadEntity()
+	if IsValid(ent) then ent:Remove() end
+	if GetConVar("g64_respawn_mario_on_death"):GetBool() == false then return end
+	timer.Create("G64_DELAY_PLAYER_RESPAWN", 0.1, 1, function()
+		local spawns = ents.FindByClass("info_player_start")
+		local random_entry = math.random(#spawns)
+		local spawnpoint = spawns[random_entry]
+		ply:SetPos(spawnpoint:GetPos())
+		timer.Create("G64_DELAY_MARIO_RESPAWN", 0.1, 1, function()
+			SpawnMarioAtPlayer(ply)
+		end)
+	end)
+end)
+
+net.Receive("G64_COLLECTED1UP", function(len, ply)
+	if ply.IsMario == nil or ply.IsMario == false then
+		ply:SetArmor(ply:Armor() + 25)
+	end
+end)
+
+net.Receive("G64_COLLECTEDCOIN", function(len, ply)
+	if ply.IsMario == nil or ply.IsMario == false then
+		ply:SetHealth(ply:Health() + 25)
+	end
 end)
 
 local meta = FindMetaTable("Player")

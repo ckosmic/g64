@@ -1,0 +1,33 @@
+AddCSLuaFile()
+
+CreateConVar("g64_vanishcap_timer", "600", FCVAR_CHEAT, "Timer for the vanish cap (default: 600)", 0, 65535)
+CreateConVar("g64_metalcap_timer", "600", FCVAR_CHEAT, "Timer for the metal cap (default: 600)", 0, 65535)
+CreateConVar("g64_wingcap_timer", "1800", FCVAR_CHEAT, "Timer for the wing cap (default: 1800)", 0, 65535)
+CreateConVar("g64_process_displacements", "1", FCVAR_CHEAT)
+CreateConVar("g64_process_static_props", "1", FCVAR_CHEAT)
+CreateConVar("g64_scale_factor", "2.5", bit.bor(FCVAR_CHEAT, FCVAR_REPLICATED), "The scale factor of Mario (default: 2.5)", 0.1, 8)
+CreateConVar("g64_respawn_mario_on_death", "1", bit.bor(FCVAR_ARCHIVE, FCVAR_USERINFO))
+
+if CLIENT then
+    CreateClientConVar("g64_debug_collision", "0", true, false)
+	CreateClientConVar("g64_debug_rays", "0", true, false)
+	CreateClientConVar("g64_interpolation", "1", true, false)
+	CreateClientConVar("g64_rompath", "", true, false)
+	CreateClientConVar("g64_upd_col_flag", "0", true, false)
+	CreateClientConVar("g64_cap_music", "1", true, false)
+	CreateClientConVar("g64_global_volume", "1.0", true, false, "", 0.0, 1.0)
+	CreateClientConVar("g64_auto_update", "0", true, false)
+	CreateClientConVar("g64_active_emotes", "", true, false)
+    CreateClientConVar("g64_disable_cache", "0", true, false)
+
+	CreateClientConVar("g64_forward", KEY_W, true)
+	CreateClientConVar("g64_back", KEY_S, true)
+	CreateClientConVar("g64_moveleft", KEY_A, true)
+	CreateClientConVar("g64_moveright", KEY_D, true)
+	CreateClientConVar("g64_jump", KEY_SPACE, true)
+	CreateClientConVar("g64_duck", KEY_LCONTROL, true)
+	CreateClientConVar("g64_attack", MOUSE_LEFT, true)
+	CreateClientConVar("g64_remove", KEY_R, true)
+	CreateClientConVar("g64_emotemenu", KEY_LSHIFT, true)
+	CreateClientConVar("g64_freemove", KEY_V, true)
+end

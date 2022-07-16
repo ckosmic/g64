@@ -151,22 +151,8 @@ function ENT:Initialize()
 				
 				g64config.Load()
 				
-				local romPath = GetConVar("g64_rompath"):GetString()
-				if romPath == nil or romPath == "" then
-					chat.AddText(Color(255,100,100), "[G64] ROM path is empty. Please specify a valid ROM path in the G64 settings.")
+				if g64utils.GlobalInit() == false then
 					self:RemoveFromClient()
-					return
-				end
-				
-				if not libsm64.IsGlobalInit() then
-					local textureData = libsm64.GlobalInit(romPath)
-					if textureData == false then
-						chat.AddText(Color(255, 100, 100), "[G64] Error loading ROM at `", romPath, "`. Please check if the file exists.")
-						self:RemoveFromClient()
-						return
-					else
-						self:CreateMarioTexture(textureData)
-					end
 				end
 				
 				self.Mins = Vector(-160/libsm64.ScaleFactor, -160/libsm64.ScaleFactor, -160/libsm64.ScaleFactor)
@@ -226,7 +212,8 @@ function ENT:OnRemove()
 				hook.Remove("CreateMove", "G64_CREATEMOVE" .. self.MarioId)
 				hook.Remove("CalcView", "G64_CALCVIEW" .. self.MarioId)
 				hook.Remove("CalcVehicleView", "G64_CALCVEHICLEVIEW" .. self.MarioId)
-				hook.Remove("HUDItemPickedUp", "SM64_ITEM_PICKED_UP" .. self.MarioId)
+				hook.Remove("HUDItemPickedUp", "G64_ITEM_PICKED_UP" .. self.MarioId)
+				hook.Remove("HUDShouldDraw", "G64_HUD_SHOULD_DRAW" .. self.MarioId)
 				
 				self.MarioId = -10
 				if self.Owner ~= nil && IsValid(self.Owner) then -- Is null if local player disconnects
@@ -266,29 +253,6 @@ end
 local upOffset = Vector(0,0,5)
 
 if CLIENT then
-
-	
-
-	function ENT:CreateMarioTexture(textureData)
-		local TEX_WIDTH = 1024
-		local TEX_HEIGHT = 64
-		local CONTENT_WIDTH = 704
-		local oldW = ScrW()
-		local oldH = ScrH()
-		local oldRT = render.GetRenderTarget()
-		
-		render.SetRenderTarget(g64utils.MarioRT)
-		render.SetViewPort(0, 0, TEX_WIDTH, TEX_HEIGHT)
-		render.Clear(0, 0, 0, 0)
-		cam.Start2D()
-			for i = 1, #textureData do
-				surface.SetDrawColor(textureData[i][1], textureData[i][2], textureData[i][3], textureData[i][4])
-				surface.DrawRect(i%CONTENT_WIDTH, math.floor(i/CONTENT_WIDTH), 1, 1)
-			end
-		cam.End2D()
-		render.SetRenderTarget(oldRT)
-		render.SetViewPort(0, 0, oldW, oldH)
-	end
 
 	local xDelta = 0
 	local yDelta = 0
@@ -371,6 +335,45 @@ if CLIENT then
 		end
 	end
 
+	function ENT:InitSomeVariables()
+		xDelta = libsm64.XDelta
+		yDelta = libsm64.YDelta
+		worldMin = libsm64.WorldMin
+		worldMax = libsm64.WorldMax
+		xChunks = libsm64.XChunks
+		yChunks = libsm64.YChunks
+		xDispChunks = libsm64.XDispChunks
+		yDispChunks = libsm64.YDispChunks
+		xOffset = worldMin.x + 16384
+		yOffset = worldMin.y + 16384
+		self.marioPos = Vector()
+		self.marioCenter = Vector()
+		self.marioForward = Vector()
+		self.marioAction = 0
+		self.marioFlags = 0
+		self.marioParticleFlags = 0
+		self.marioInvincTimer = 0
+		self.marioHurtCounter = 0
+		self.marioHealth = 2176
+		self.marioWaterLevel = -100000
+		self.marioNumLives = 4
+		self.bufferIndex = 0
+		self.lerpedPos = Vector()
+		self.animInfo = {}
+		self.tickTime = -1
+		self.wingsIndices = {}
+		self.hasWingCap = false
+		self.hasMetalCap = false
+		self.hasVanishCap = false
+		self.marioDead = false
+		self.view = {
+			origin = Vector(),
+			angles = Angle(),
+			fov = nil,
+			inited = false
+		}
+	end
+
 	local fLerpVector = LerpVector
 	function ENT:GenerateMesh()
 		local interpolation = (GetConVar("g64_interpolation"):GetBool())
@@ -403,15 +406,13 @@ if CLIENT then
 		local posTab = vertex[1]
 		local lastPosTab = lastVertex[1]
 		local normTab = vertex[2]
+		local lastNormTab = lastVertex[2]
 		local uTab = vertex[3]
 		local vTab = vertex[4]
 		local colTab = vertex[5]
 		local wingIndex = 1
 		local uvOffset = 2/704
 		local hasWingCap = self.hasWingCap
-
-		--local lPlayer = LocalPlayer()
-		--local inVehicle = self.Owner == lPlayer and lPlayer:InVehicle() and lPlayer:GetVehicle():GetThirdPersonMode() == false
 
 		-- Create main mesh
 		mesh.Begin(self.Mesh, MATERIAL_TRIANGLES, triCount)
@@ -420,25 +421,22 @@ if CLIENT then
 				mesh.End()
 				return
 			end
-			if hasWingCap == true and i > vertCount-24 then
+			if hasWingCap == true and vertCount > 2256 and i > vertCount-24 then
 				self.wingsIndices[wingIndex] = i
 				wingIndex = wingIndex + 1
 			else
-				--if inVehicle == true and (colTab[i] == 3 or colTab[i] == 4) then
-					
-				--else
-					col = myColorTable[colTab[i]]
-					
-					if interpolation then
-						mesh.Position(fLerpVector(t, posTab[i], lastPosTab[i]))
-					else
-						mesh.Position(posTab[i])
-					end
+				col = myColorTable[colTab[i]]
+				
+				if interpolation then
+					mesh.Position(fLerpVector(t, posTab[i], lastPosTab[i]))
+					mesh.Normal(fLerpVector(t, normTab[i], lastNormTab[i]))
+				else
+					mesh.Position(posTab[i])
 					mesh.Normal(normTab[i])
-					mesh.TexCoord(0, uTab[i]+uvOffset, vTab[i]+uvOffset)
-					mesh.Color(col[1], col[2], col[3], 255)
-					mesh.AdvanceVertex()
-				--end
+				end
+				mesh.TexCoord(0, uTab[i]+uvOffset, vTab[i]+uvOffset)
+				mesh.Color(col[1], col[2], col[3], 255)
+				mesh.AdvanceVertex()
 			end
 		end
 		mesh.End()
@@ -447,7 +445,7 @@ if CLIENT then
 		if hasWingCap == true then
 			local j = 1
 			local wingsIndices = self.wingsIndices
-			uvOffset = 1/704
+			uvOffset = 0.5/704
 			
 			mesh.Begin(self.WingsMesh, MATERIAL_TRIANGLES, #wingsIndices/3)
 			for i = 1, #wingsIndices do
@@ -470,42 +468,6 @@ if CLIENT then
 			end
 			mesh.End()
 		end
-	end
-	
-	function ENT:InitSomeVariables()
-		xDelta = libsm64.XDelta
-		yDelta = libsm64.YDelta
-		worldMin = libsm64.WorldMin
-		worldMax = libsm64.WorldMax
-		xChunks = libsm64.XChunks
-		yChunks = libsm64.YChunks
-		xDispChunks = libsm64.XDispChunks
-		yDispChunks = libsm64.YDispChunks
-		xOffset = worldMin.x + 16384
-		yOffset = worldMin.y + 16384
-		self.marioPos = Vector()
-		self.marioCenter = Vector()
-		self.marioForward = Vector()
-		self.marioAction = 0
-		self.marioFlags = 0
-		self.marioParticleFlags = 0
-		self.marioInvincTimer = 0
-		self.marioHealth = 2176
-		self.marioWaterLevel = -100000
-		self.bufferIndex = 0
-		self.lerpedPos = Vector()
-		self.animInfo = {}
-		self.tickTime = -1
-		self.wingsIndices = {}
-		self.hasWingCap = false
-		self.hasMetalCap = false
-		self.hasVanishCap = false
-		self.view = {
-			origin = Vector(),
-			angles = Angle(),
-			fov = nil,
-			inited = false
-		}
 	end
 
 	function ENT:DrawEither()
@@ -726,6 +688,7 @@ if CLIENT then
 			tickCount = 0
 
 			libsm64.SetMarioAngle(self.MarioId, math.rad(lPlayer:GetAngles()[2]-90)/(math.pi*math.pi))
+			libsm64.MarioSetLives(self.MarioId, lPlayer.LivesCount)
 
 			vertexBuffers[self.MarioId] = { {}, {} }
 			stateBuffers[self.MarioId] = { {}, {} }
@@ -782,6 +745,12 @@ if CLIENT then
 			end
 		end
 
+		local dontAttack = {
+			g64_yellowcoin = true,
+			g64_redcoin = true,
+			g64_bluecoin = true,
+			g64_1up = true
+		}
 		local function PerformGroundAttacks()
 			if self:MarioIsAttacking() then
 				local tr = util.TraceHull({
@@ -793,7 +762,7 @@ if CLIENT then
 					mask = MASK_SHOT_HULL
 				})
 				hitPos = tr.HitPos
-				if IsValid(tr.Entity) and tr.Hit and tr.Entity.HitStunTimer ~= nil and tr.Entity.HitStunTimer < 0 then
+				if IsValid(tr.Entity) and tr.Hit and tr.Entity.HitStunTimer ~= nil and tr.Entity.HitStunTimer < 0 and not dontAttack[tr.Entity:GetClass()] then
 					local min, max = tr.Entity:WorldSpaceAABB()
 					if tr.Entity:IsNPC() == true or tr.Entity:IsPlayer() == true then
 						if libsm64.MarioAttack(self.MarioId, tr.HitPos, max.z - min.z) == true then
@@ -838,7 +807,7 @@ if CLIENT then
 				maxs = trMaxs,
 				mask = MASK_SHOT_HULL
 			})
-			if IsValid(tr.Entity) and tr.Hit and tr.Entity.HitStunTimer ~= nil and tr.Entity.HitStunTimer < 0 then
+			if IsValid(tr.Entity) and tr.Hit and tr.Entity.HitStunTimer ~= nil and tr.Entity.HitStunTimer < 0 and not dontAttack[tr.Entity:GetClass()] then
 				local min, max = tr.Entity:WorldSpaceAABB()
 				if tr.Entity:IsNPC() == true or tr.Entity:IsPlayer() == true then
 					if libsm64.MarioAttack(self.MarioId, tr.Entity:GetPos(), max.z - min.z) == true then
@@ -972,6 +941,22 @@ if CLIENT then
 				entFilter[2] = self.Owner
 			end
 		end
+
+		local function CheckIfDead()
+			if self.marioNumLives == 0 and self.marioHealth == 0 and self.marioDead == false then
+				self.marioDead = true
+				timer.Create("G64_RESPAWN_TIMER", 5, 1, function()
+					if self.marioNumLives == 0 and self.marioHealth == 0 then
+						net.Start("G64_RESPAWNMARIO")
+						net.WriteEntity(self)
+						net.SendToServer()
+						lPlayer.LivesCount = 4
+					else
+						self.marioDead = false
+					end
+				end)
+			end
+		end
 		
 		local hitPos = Vector()
 		local animInfo
@@ -982,7 +967,7 @@ if CLIENT then
 			if self.MarioId == nil then return end
 			fixedTime = SysTime()
 
-			if g64utils.IsSpawnMenuOpen() == false then
+			if g64utils.IsSpawnMenuOpen() == false and g64utils.IsChatOpen == false then
 				inputs = g64utils.GetInputTable()
 				if input.IsButtonDown(GetConVar("g64_freemove"):GetInt()) == true then
 					if vDown == false and GetConVar("sv_cheats"):GetBool() then
@@ -1019,6 +1004,7 @@ if CLIENT then
 			self.marioParticleFlags = marioState[7]
 			self.marioHealth = bit.rshift(marioState[4], 8)
 			self.marioInvincTimer = marioState[8]
+			self.marioHurtCounter = marioState[9]
 			self.colorTable = g64config.Config.MarioColors
 			self.hasWingCap = g64utils.MarioHasFlag(self.marioFlags, 0x00000008)
 			self.hasMetalCap = g64utils.MarioHasFlag(self.marioFlags, 0x00000004)
@@ -1026,6 +1012,9 @@ if CLIENT then
 			self.marioCenter = Vector(self.marioPos)
 			self.marioCenter.z = self.marioCenter.z + 50 / libsm64.ScaleFactor
 			self.marioAction = marioState[5]
+			self.marioNumLives = marioState[10]
+
+			lPlayer.LivesCount = self.marioNumLives
 
 			--if(lPlayer:GetPos():DistToSqr(self.lerpedPos) > 100000) then
 			--	-- Probably used a teleporter, so teleport Mario to the player
@@ -1037,6 +1026,7 @@ if CLIENT then
 			PerformGroundAttacks()
 			PerformAerialAttacks()
 			CheckForSpecialCaps()
+			CheckIfDead()
 			
 			self.bufferIndex = 1 - self.bufferIndex
 			
@@ -1210,10 +1200,20 @@ if CLIENT then
 		
 		hook.Add("HUDItemPickedUp", "G64_ITEM_PICKED_UP" .. self.MarioId, function(itemName)
 			if itemName == "item_healthkit" then
-				libsm64.MarioHeal(self.MarioId, 16)
+				libsm64.MarioHeal(self.MarioId, 4)
 			elseif itemName == "item_healthvial" then
-				libsm64.MarioHeal(self.MarioId, 8)
+				libsm64.MarioHeal(self.MarioId, 2)
 			end
+		end)
+
+		local hideHud = {
+			CHudHealth = true,
+			CHudBattery = true,
+			CHudSuitPower = true,
+			CHudPoisonDamageIndicator = true
+		}
+		hook.Add("HUDShouldDraw", "G64_HUD_SHOULD_DRAW" .. self.MarioId, function(name)
+			if hideHud[name] == true then return false end
 		end)
 		
 		-- From drive_base.lua

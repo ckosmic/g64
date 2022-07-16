@@ -51,6 +51,27 @@ if CLIENT then
     })
     g64utils.MetalMat = Material("debug/env_cubemap_model")
 
+    g64utils.CoinRT = GetRenderTargetEx("Coin_Texture", 128, 32, RT_SIZE_OFFSCREEN, MATERIAL_RT_DEPTH_NONE, 0, 0, IMAGE_FORMAT_RGBA8888)
+    g64utils.CoinMat = CreateMaterial("g64/libsm64_coin", "UnlitGeneric", {
+        ["$basetexture"] = g64utils.CoinRT:GetName(),
+        ["$alphatest"] = "1",
+        ["$vertexcolor"] = "1"
+    })
+
+    g64utils.UIRT = GetRenderTargetEx("UI_Texture", 256, 16, RT_SIZE_OFFSCREEN, MATERIAL_RT_DEPTH_NONE, bit.bor(1, 4, 8), 0, IMAGE_FORMAT_RGBA8888)
+    g64utils.UIMat = CreateMaterial("g64/libsm64_ui", "UnlitGeneric", {
+        ["$basetexture"] = g64utils.UIRT:GetName(),
+        ["$translucent"] = "1",
+        ["$vertexcolor"] = "1"
+    })
+
+    g64utils.HealthRT = GetRenderTargetEx("Health_Texture", 1024, 64, RT_SIZE_OFFSCREEN, MATERIAL_RT_DEPTH_NONE, bit.bor(1, 4, 8), 0, IMAGE_FORMAT_RGBA8888)
+    g64utils.HealthMat = CreateMaterial("g64/libsm64_health", "UnlitGeneric", {
+        ["$basetexture"] = g64utils.HealthRT:GetName(),
+        ["$vertexalpha"] = "1",
+        ["$vertexcolor"] = "1"
+    })
+
     -- A mask of just Marios
     g64utils.MarioTargetRT = GetRenderTarget("G64_MARIO_TARGET", ScrW(), ScrH())
     g64utils.MarioTargetMat = CreateMaterial("g64/libsm64_mario_target", "UnlitGeneric", {
@@ -93,6 +114,19 @@ if CLIENT then
         render.SetMaterial(g64utils.MarioTargetMat)
         render.DrawScreenQuad()
     end)
+    hook.Remove("HUDPaint", "G64_PDPFDPFPDF")
+
+    g64utils.IsChatOpen = false
+    hook.Add("StartChat", "G64_ON_CHAT_OPEN", function(isTeamChat)
+        g64utils.IsChatOpen = true
+    end)
+    hook.Add("FinishChat", "G64_ON_CHAT_CLOSE", function()
+        g64utils.IsChatOpen = false
+    end)
+    --hook.Add("HUDPaint", "G64_PDPFDPFPDF", function()
+    --    local rt = g64utils.HealthRT
+    --    render.DrawTextureToScreenRect(rt, 0, 0, rt:Width(), rt:Height())
+    --end)
 
     g64utils.Inputs = {}
     g64utils.Inputs[1] = Vector()
@@ -216,5 +250,59 @@ if CLIENT then
             return true
         end
         return false
+    end
+
+    g64utils.CreateTexture = function(textureData, rt, content_width)
+		local TEX_WIDTH = rt:Width()
+		local TEX_HEIGHT = rt:Height()
+		local CONTENT_WIDTH = content_width
+		local oldW = ScrW()
+		local oldH = ScrH()
+		local oldRT = render.GetRenderTarget()
+		
+		render.SetRenderTarget(rt)
+		render.SetViewPort(0, 0, TEX_WIDTH, TEX_HEIGHT)
+		render.Clear(0, 0, 0, 0)
+		cam.Start2D()
+			for i = 1, #textureData do
+				surface.SetDrawColor(textureData[i][1], textureData[i][2], textureData[i][3], textureData[i][4])
+				surface.DrawRect(i%CONTENT_WIDTH, math.floor(i/CONTENT_WIDTH), 1, 1)
+			end
+		cam.End2D()
+		render.SetRenderTarget(oldRT)
+		render.SetViewPort(0, 0, oldW, oldH)
+	end
+
+    g64utils.WithinBounds = function(v1, v2, dist)
+        local distSqr = dist * dist
+        return v1:DistToSqr(v2) < distSqr
+    end
+
+    g64utils.RemoveFromClient = function(ent)
+        net.Start("G64_REMOVEFROMCLIENT")
+            net.WriteEntity(ent)
+        net.SendToServer()
+    end
+
+    g64utils.GlobalInit = function()
+        local romPath = GetConVar("g64_rompath"):GetString()
+        if romPath == nil or romPath == "" then
+            chat.AddText(Color(255,100,100), "[G64] ROM path is empty. Please specify a valid ROM path in the G64 settings.")
+            return false
+        end
+
+        if not libsm64.IsGlobalInit() then
+            local textureData, coinTextureData, uiTextureData, healthTextureData = libsm64.GlobalInit(romPath)
+            if textureData == false then
+                chat.AddText(Color(255, 100, 100), "[G64] Error loading ROM at `", romPath, "`. Please check if the file exists.")
+                return false
+            else
+                g64utils.CreateTexture(textureData, g64utils.MarioRT, 704)
+                g64utils.CreateTexture(coinTextureData, g64utils.CoinRT, 128)
+                g64utils.CreateTexture(uiTextureData, g64utils.UIRT, 224)
+                g64utils.CreateTexture(healthTextureData, g64utils.HealthRT, 704)
+                return true
+            end
+        end
     end
 end

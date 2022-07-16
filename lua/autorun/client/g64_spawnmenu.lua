@@ -64,9 +64,18 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		toggleCapMusic:SetTextColor(Color(0,0,0))
 		toggleCapMusic:SetTooltip([[Plays the wing cap or metal cap theme
 		when picking up a cap.]])
-		if GetConVar("g64_interpolation"):GetBool() then toggleCapMusic:SetValue(true)
+		if GetConVar("g64_cap_music"):GetBool() then toggleCapMusic:SetValue(true)
 		else toggleCapMusic:SetValue(false) end
 		toggleCapMusic:SetConVar("g64_cap_music")
+
+		local rspnOnDeath = vgui.Create("DCheckBoxLabel")
+		rspnOnDeath:SetText("Respawn Mario on Game Over")
+		rspnOnDeath:SetTextColor(Color(0,0,0))
+		rspnOnDeath:SetTooltip([[Puts you back in Mario mode after
+		you run out of lives and die.]])
+		if GetConVar("g64_respawn_mario_on_death"):GetBool() then rspnOnDeath:SetValue(true)
+		else rspnOnDeath:SetValue(false) end
+		rspnOnDeath:SetConVar("g64_respawn_mario_on_death")
 
 		local volumeSlider = vgui.Create("DNumSlider")
 		volumeSlider:SetText("Volume")
@@ -125,6 +134,7 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		panel:AddItem(toggleUpdates)
 		panel:AddItem(toggleInterp)
 		panel:AddItem(toggleCapMusic)
+		panel:AddItem(rspnOnDeath)
 		panel:AddItem(volumeSlider)
 		panel:AddItem(colHeader)
 		panel:AddItem(colorListView)
@@ -134,13 +144,7 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 	
 	spawnmenu.AddToolMenuOption("Utilities", "G64", "G64_MusicPlayer", "#Music Player", "", "", function(panel)
 		panel:ClearControls()
-		
-		local musicHeader = vgui.Create("DLabel")
-		musicHeader:SetText("Uh what")
-		musicHeader:SetTextColor(Color(0,0,0))
-		musicHeader:SetFont("DermaDefaultBold")
-		musicHeader:SetWrap(true)
-		musicHeader:SetAutoStretchVertical(true)
+		g64utils.GlobalInit()
 		
 		local musicListView = vgui.Create("DListView")
 		musicListView:SetMultiSelect(false)
@@ -198,21 +202,6 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 			StopAllTracks()
 		end
 		
-		function musicHeader:Paint(w,h)
-			if libsm64 ~= nil and libsm64.ModuleLoaded == true and libsm64.IsGlobalInit() then
-				self:SetText("Initialized.")
-				self:SetColor(Color(30, 200, 30))
-				stopButton:SetEnabled(true)
-				playButton:SetEnabled(true)
-			else
-				self:SetText("Not initialized. Please spawn Mario at least once to use the music player.")
-				self:SetColor(Color(255, 30, 30))
-				stopButton:SetEnabled(false)
-				playButton:SetEnabled(false)
-			end
-		end
-		
-		panel:AddItem(musicHeader)
 		panel:AddItem(musicListView)
 		panel:AddItem(playButton)
 		panel:AddItem(stopButton)
@@ -333,6 +322,7 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		local activeListView = vgui.Create("DListView")
 		activeListView:SetMultiSelect(false)
 		activeListView:AddColumn("Active Emote")
+		activeListView:SetHeight(200)
 		for i=1, #emoteStates do
 			if emoteStates[i] == true then
 				activeListView:AddLine(g64emote.Emotes[i].name)
@@ -350,7 +340,9 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 			GetConVar("g64_active_emotes"):SetString(table.concat(g64emote.ActiveEmotes, ","))
 			g64emote.CalculateSegments(#g64emote.ActiveEmotes)
 		end
-		activeListView:SetHeight(200)
+		activeListView.OnRowSelected = function(panel, rowIndex, row)
+			activeListView:ClearSelection()
+		end
 
 		local function AddActiveEmote(index)
 			emoteStates[index] = not emoteStates[index]
