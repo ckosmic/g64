@@ -456,7 +456,7 @@ spawnmenu.AddCreationTab("G64", function()
 	return contentPanel
 end, "icon16/controller.png", 50, "Mario in Garry's Mod!")
 
-local colorMaterial = Material("vgui/entities/g64_blankicon")
+local blankIconMat = Material("vgui/entities/g64_blankicon")
 spawnmenu.AddContentType("g64_entity", function(container, data)
 	if not data.nicename then return end
 	if not data.spawnname then return end
@@ -472,6 +472,7 @@ spawnmenu.AddContentType("g64_entity", function(container, data)
 		icon.Image:SetPos(0, 0)
 		icon.Image:NoClipping(false)
 		function icon.Image:Paint(w,h)
+			g64utils.GlobalInit()
 			local w2 = w - icon.Padding * 2
 			local h2 = h - icon.Padding * 2
 			local u0, v0 = data.icongenerator.u[1], data.icongenerator.v[1]
@@ -480,7 +481,7 @@ spawnmenu.AddContentType("g64_entity", function(container, data)
 			render.PushFilterMag(TEXFILTER.ANISOTROPIC)
 			render.PushFilterMin(TEXFILTER.ANISOTROPIC)
 
-			surface.SetMaterial(colorMaterial)
+			surface.SetMaterial(blankIconMat)
 			surface.DrawTexturedRect(3 + icon.Border, 3 + icon.Border, 128 - 8 - icon.Border * 2, 128 - 8 - icon.Border * 2)
 			
 			render.PopFilterMin()
