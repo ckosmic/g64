@@ -110,3 +110,15 @@ function ENT:PhysicsCollide(data, physobj)
 
 	physobj:SetVelocity( TargetVelocity )
 end
+
+include("includes/g64_utils.lua")
+list.Set("g64_entities", "g64_1up", {
+    Category = "Items",
+    Name = "1-Up",
+    Material = "",
+    IconGenerator = {
+        material = g64utils.HealthMat,
+        u = { g64sprites.Health.one_up.u, g64sprites.Health.one_up.u + g64sprites.Health.one_up.w / g64sprites.Health.tex_width },
+        v = { 0, 1 }
+    }
+})

@@ -306,3 +306,5 @@ if CLIENT then
         end
     end
 end
+
+hook.Call("G64UtilsInitialized")

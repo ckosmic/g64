@@ -2,7 +2,7 @@ AddCSLuaFile()
 include("includes/g64_sprites.lua")
 include("includes/g64_types.lua")
 
-UI_SCALE = 4
+UI_SCALE = 6
 ICON_SIZE = 16 * UI_SCALE
 HUD_TOP_Y = 15
 SCREEN_WIDTH = ScrW()
@@ -123,6 +123,7 @@ end
 
 hook.Remove("HUDPaint", "G64_DRAW_HUD")
 hook.Add("HUDPaint", "G64_DRAW_HUD", function()
+    if GetConVar("g64_hud_enable"):GetBool() == false then return end
     local lPlayer = LocalPlayer()
     local marioEnt = lPlayer.MarioEnt
     if not IsValid(marioEnt) or not lPlayer.IsMario then return end
@@ -136,7 +137,7 @@ hook.Add("HUDPaint", "G64_DRAW_HUD", function()
     local marioHealth = marioEnt.marioHealth
     if marioHealth < 0 then marioHealth = 0 end
     if marioHealth > 8 then marioHealth = 8 end
-
+    
     if starCount >= 100 then
         showX = 0
     end
@@ -176,6 +177,9 @@ end)
 hook.Add("G64GameTick", "G64_HUD_TICK", function() 
     local marioEnt = LocalPlayer().MarioEnt
     if not IsValid(marioEnt) or not LocalPlayer().IsMario then return end
+
+    UI_SCALE = GetConVar("g64_hud_scale"):GetInt()
+    ICON_SIZE = 16 * UI_SCALE
 
     if marioEnt.marioHurtCounter > 0 then
         emphasizingFlag = true

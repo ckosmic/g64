@@ -58,3 +58,9 @@ function ENT:Think()
 		end
 	end
 end
+
+list.Set("g64_entities", "g64_metalcap", {
+    Category = "Caps",
+    Name = "Metal Cap",
+    Material = "materials/vgui/entities/g64_metalcap.png"
+})

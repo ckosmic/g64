@@ -87,6 +87,22 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		volumeSlider.OnValueChanged = function(panel, value)
 			if libsm64 ~= nil then libsm64.SetGlobalVolume(value) end
 		end
+
+		local hudToggle = vgui.Create("DCheckBoxLabel")
+		hudToggle:SetText("Enable HUD")
+		hudToggle:SetTextColor(Color(0,0,0))
+		hudToggle:SetTooltip([[Enables the HUD.]])
+		if GetConVar("g64_hud_enable"):GetBool() then hudToggle:SetValue(true)
+		else hudToggle:SetValue(false) end
+		hudToggle:SetConVar("g64_hud_enable")
+
+		local hudScaleSlider = vgui.Create("DNumSlider")
+		hudScaleSlider:SetText("HUD scale")
+		hudScaleSlider:SetMin(0)
+		hudScaleSlider:SetMax(6)
+		hudScaleSlider:SetDecimals(0)
+		hudScaleSlider:SetConVar("g64_hud_scale")
+		hudScaleSlider:SetDark(true)
 		
 		local colHeader = vgui.Create("DLabel")
 		colHeader:SetText("Colors")
@@ -136,6 +152,8 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		panel:AddItem(toggleCapMusic)
 		panel:AddItem(rspnOnDeath)
 		panel:AddItem(volumeSlider)
+		panel:AddItem(hudToggle)
+		panel:AddItem(hudScaleSlider)
 		panel:AddItem(colHeader)
 		panel:AddItem(colorListView)
 		panel:AddItem(colorMixer)
@@ -373,4 +391,144 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		panel:AddItem(activeHeader)
 		panel:AddItem(activeListView)
 	end)
+end)
+
+G64EntityCategories = {
+	"Main",
+	"Items",
+	"Caps"
+}
+
+hook.Add("G64SpawnMenuPopulate", "G64_SPAWN_MENU_POPULATE", function(panel, tree, node)
+	local cats = {}
+	local ents = list.Get("g64_entities")
+
+	if ents then
+		for k,v in pairs(ents) do
+			v.Category = v.Category or "Other Stuff"
+			cats[v.Category] = cats[v.Category] or {}
+			v.ClassName = k
+			v.PrintName = v.Name
+			table.insert(cats[v.Category], v)
+		end
+	end
+
+	local entnode = tree:AddNode("Entities", "icon16/bricks.png")
+	local ListPanel = vgui.Create("ContentContainer", panel)
+	ListPanel:SetVisible(false)
+	ListPanel:SetTriggerSpawnlistChange(false)
+
+	entnode.DoPopulate = function(self)
+		ListPanel:Clear()
+		
+		for k1,v1 in next, G64EntityCategories do
+			local k,v = v1, cats[v1]
+			local Header = vgui.Create("ContentHeader", ListPanel)
+			Header:SetText(k)
+			ListPanel:Add(Header)
+			
+			for k,ent in SortedPairsByMemberValue(v, "PrintName") do
+				spawnmenu.CreateContentIcon("g64_entity", ListPanel, {
+					nicename = ent.PrintName or ent.ClassName,
+					spawnname = ent.ClassName,
+					material = ent.Material,
+					admin = false,
+					icongenerator = ent.IconGenerator
+				})
+			end
+		end
+	end
+
+	entnode.DoClick = function(self)
+		self:DoPopulate()
+		panel:SwitchPanel(ListPanel)
+	end
+
+	local FirstNode = tree:Root():GetChildNode(0)
+	if IsValid(FirstNode) then
+		FirstNode:InternalDoClick()
+	end
+end)
+
+spawnmenu.AddCreationTab("G64", function()
+	local contentPanel = vgui.Create("SpawnmenuContentPanel")
+	contentPanel:CallPopulateHook("G64SpawnMenuPopulate")
+	return contentPanel
+end, "icon16/controller.png", 50, "Mario in Garry's Mod!")
+
+local colorMaterial = Material("vgui/entities/g64_blankicon")
+spawnmenu.AddContentType("g64_entity", function(container, data)
+	if not data.nicename then return end
+	if not data.spawnname then return end
+
+	local icon = vgui.Create("ContentIcon", container)
+	icon:SetContentType("g64_entity")
+	icon:SetSpawnName(data.spawnname)
+	icon:SetName(data.nicename)
+	if data.material then icon:SetMaterial(data.material) end
+	if data.icongenerator then
+		icon.Padding = 0
+		icon.Image:SetVisible(true)
+		icon.Image:SetPos(0, 0)
+		icon.Image:NoClipping(false)
+		function icon.Image:Paint(w,h)
+			local w2 = w - icon.Padding * 2
+			local h2 = h - icon.Padding * 2
+			local u0, v0 = data.icongenerator.u[1], data.icongenerator.v[1]
+			local u1, v1 = data.icongenerator.u[2], data.icongenerator.v[2]
+
+			render.PushFilterMag(TEXFILTER.ANISOTROPIC)
+			render.PushFilterMin(TEXFILTER.ANISOTROPIC)
+
+			surface.SetMaterial(colorMaterial)
+			surface.DrawTexturedRect(3 + icon.Border, 3 + icon.Border, 128 - 8 - icon.Border * 2, 128 - 8 - icon.Border * 2)
+			
+			render.PopFilterMin()
+			render.PopFilterMag()
+
+			render.PushFilterMag(TEXFILTER.LINEAR)
+
+			if data.icongenerator.tint then surface.SetDrawColor(data.icongenerator.tint:Unpack())
+			else surface.SetDrawColor(color_white) end
+			surface.SetMaterial(data.icongenerator.material)
+			surface.DrawTexturedRectUV(w2*0.175+icon.Padding+3, h2*0.175+icon.Padding+3, w2*0.65, h2*0.65, u0, v0, u1, v1)
+			
+			render.PopFilterMag()
+
+			icon:Paint(icon:GetSize())
+		end
+		function icon:PerformLayout()
+			if ( self:IsDown() && !self.Dragging ) then
+				self.Padding = 6
+			else
+				self.Padding = 0
+			end
+		end
+	end
+	icon:SetAdminOnly(data.admin and true or false)
+	icon:SetColor(Color(0, 0, 0, 255))
+	
+	icon.DoClick = function()
+		RunConsoleCommand("gm_spawnsent", data.spawnname)
+		surface.PlaySound("ui/buttonclickrelease.wav")
+	end
+	
+	icon.OpenMenu = function(icon)
+		local menu = DermaMenu()
+			menu:AddOption("Copy to clipboard", function() 
+				SetClipboardText(data.spawnname) 
+			end):SetIcon("icon16/page_copy.png")
+			menu:AddOption("Spawn using toolgun", function() 
+				RunConsoleCommand("gmod_tool", "creator") 
+				RunConsoleCommand("creator_type", "0") 
+				RunConsoleCommand("creator_name", data.spawnname) 
+			end):SetIcon("icon16/brick_add.png")
+		menu:Open()
+	end
+	
+	if IsValid(container) then
+		container:Add(icon)
+	end
+
+	return icon
 end)

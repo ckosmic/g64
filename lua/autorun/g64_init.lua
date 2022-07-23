@@ -357,7 +357,7 @@ if CLIENT then
 				prop_vehicle_jeep = true,
 				prop_vehicle_prisoner_pod = true,
 				prop_door_rotating = true,
-				gmod_sent_vehicle_fphysics_base = true
+				gmod_sent_vehicle_fphysics_base = true,
 			}
 			libsm64.AllowedBrushEnts = {
 				func_door = true,

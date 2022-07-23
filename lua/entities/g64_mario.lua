@@ -215,6 +215,10 @@ function ENT:OnRemove()
 				hook.Remove("HUDItemPickedUp", "G64_ITEM_PICKED_UP" .. self.MarioId)
 				hook.Remove("HUDShouldDraw", "G64_HUD_SHOULD_DRAW" .. self.MarioId)
 				
+				if IsValid(self.cameraOverride) then
+					self.cameraOverride:SetNoDraw(false)
+				end
+
 				self.MarioId = -10
 				if self.Owner ~= nil && IsValid(self.Owner) then -- Is null if local player disconnects
 					self.Owner:SetNoDraw(false)
@@ -366,6 +370,7 @@ if CLIENT then
 		self.hasMetalCap = false
 		self.hasVanishCap = false
 		self.marioDead = false
+		self.cameraOverride = nil
 		self.view = {
 			origin = Vector(),
 			angles = Angle(),
@@ -942,8 +947,24 @@ if CLIENT then
 			end
 		end
 
+		local function CheckForCamera()
+			local nwCam = lPlayer:GetNWEntity("UsingCamera")
+			if IsValid(nwCam) then
+				if self.cameraOverride == nil and nwCam ~= lPlayer then
+					self.cameraOverride = nwCam
+					self.cameraOverride:SetNoDraw(true)
+				end
+				if self.cameraOverride ~= nil and nwCam == lPlayer then
+					if IsValid(self.cameraOverride) then
+						self.cameraOverride:SetNoDraw(false)
+					end
+					self.cameraOverride = nil
+				end
+			end
+		end
+
 		local function CheckIfDead()
-			if self.marioNumLives == 0 and self.marioHealth == 0 and self.marioDead == false then
+			if self.marioNumLives <= 0 and self.marioHealth <= 0 and self.marioDead == false then
 				self.marioDead = true
 				timer.Create("G64_RESPAWN_TIMER", 5, 1, function()
 					if self.marioNumLives == 0 and self.marioHealth == 0 then
@@ -1027,6 +1048,7 @@ if CLIENT then
 			PerformAerialAttacks()
 			CheckForSpecialCaps()
 			CheckIfDead()
+			CheckForCamera()
 			
 			self.bufferIndex = 1 - self.bufferIndex
 			
@@ -1210,7 +1232,8 @@ if CLIENT then
 			CHudHealth = true,
 			CHudBattery = true,
 			CHudSuitPower = true,
-			CHudPoisonDamageIndicator = true
+			CHudPoisonDamageIndicator = true,
+			CHudCrosshair = true
 		}
 		hook.Add("HUDShouldDraw", "G64_HUD_SHOULD_DRAW" .. self.MarioId, function(name)
 			if hideHud[name] == true then return false end
@@ -1218,6 +1241,16 @@ if CLIENT then
 		
 		-- From drive_base.lua
 		CalcView_ThirdPerson = function( view, dist, hullsize, ply, entityfilter )
+			if IsValid(self.cameraOverride) then
+				if IsValid(self.cameraOverride:GetentTrack()) then
+					view.angles	= (view.origin - self.cameraOverride:GetPos()):Angle()
+				else
+					view.angles	= self.cameraOverride:GetAngles()
+				end
+				view.origin	= self.cameraOverride:GetPos()
+				return
+			end
+
 			local newdist = dist / libsm64.ScaleFactor
 			local neworigin = view.origin - ply:EyeAngles():Forward() * newdist
 			local newmask = MASK_SOLID
@@ -1259,3 +1292,9 @@ else
 	
 
 end
+
+list.Set("g64_entities", "g64_mario", {
+    Category = "Main",
+    Name = "Mario",
+    Material = "materials/vgui/entities/g64_mario.png"
+})

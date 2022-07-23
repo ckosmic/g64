@@ -224,6 +224,10 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	
 	hook.Add("OnEntityCreated", "G64_ENTITY_CREATED", function(ent)
 		ProcessNewEntity(ent)
+
+		if ent:GetClass() == "gmod_cameraprop" then
+			LocalPlayer().CameraEnt = ent
+		end
 	end)
 
 	--hook.Add("HUDPaint", "ugh", function(ent)
@@ -357,6 +361,10 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 			for k,v in ipairs(props) do
 				ProcessNewEntity(v)
 			end
+		end
+
+		if not IsValid(LocalPlayer().CameraEnt) then
+			LocalPlayer().CameraEnt = nil
 		end
 
 		libsm64.SetAutoUpdateState(GetConVar("g64_auto_update"):GetBool())

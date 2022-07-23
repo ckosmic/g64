@@ -46,6 +46,14 @@ net.Receive("G64_TRANSMITMOVE", function(len, ply)
 			ply:SetPos(networkedPos)
 			mario:SetPos(networkedPos)
 		end
+
+		if not IsValid(ply.UsingCamera) then
+			ply:SetNWEntity("UsingCamera", ply)
+		else
+			ply.UsingCamera:SetNWBool("locked", ply.UsingCamera.locked)
+			ply:SetNWEntity("UsingCamera", ply.UsingCamera)
+		end
+		
 		
 		animInfo.animID = net.ReadInt(16)
 		animInfo.animAccel = net.ReadInt(32)
