@@ -74,8 +74,6 @@ function ENT:Initialize()
 		end
 	end
 
-	print("Owner:",self.Owner)
-
 	self.OwnerHealth = self.Owner:Health()
 	self.OwnerMaxHealth = self.Owner:GetMaxHealth()
 	-- Remove Mario if already spawned or if the player is dead or driving
@@ -1039,10 +1037,10 @@ if CLIENT then
 
 			lPlayer.LivesCount = self.marioNumLives
 
-			--if(lPlayer:GetPos():DistToSqr(self.lerpedPos) > 100000) then
-			--	-- Probably used a teleporter, so teleport Mario to the player
-			--	libsm64.SetMarioPosition(self.MarioId, lPlayer:GetPos())
-			--end
+			if not g64utils.WithinBounds(self.lerpedPos, lPlayer:GetPos(), 1000) then
+				-- Probably used a teleporter, so teleport Mario to the player
+				libsm64.SetMarioPosition(self.MarioId, lPlayer:GetPos())
+			end
 			
 			LoadStaticSurfaces()
 			SpawnParticles()
