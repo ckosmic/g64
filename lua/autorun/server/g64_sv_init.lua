@@ -240,9 +240,11 @@ hook.Add("SetupMove", "G64_SETUP_MOVE", function(ply, mv, cmd)
 end)
 
 local function SpawnMarioAtPlayer(ply)
+	ply.MarioEnt = nil
 	local mario = ents.Create("g64_mario")
 	mario:SetPos(ply:GetPos())
 	mario:SetOwner(ply)
+	mario.Owner = ply
 	mario:Spawn()
 	mario:Activate()
 	undo.Create("Mario")

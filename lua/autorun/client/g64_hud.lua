@@ -137,6 +137,8 @@ hook.Add("HUDPaint", "G64_DRAW_HUD", function()
     local marioHealth = marioEnt.marioHealth
     if marioHealth < 0 then marioHealth = 0 end
     if marioHealth > 8 then marioHealth = 8 end
+
+    if marioNumLives == nil then return end
     
     if starCount >= 100 then
         showX = 0

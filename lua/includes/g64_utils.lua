@@ -5,6 +5,7 @@ MAP_GEO_CACHE_VERSION = 1
 g64utils = {}
 
 g64utils.MarioHasFlag = function(mask, flag)
+    if mask == nil or flag == nil then return false end
     return (bit.band(mask, flag) != 0)
 end
 

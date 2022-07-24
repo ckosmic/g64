@@ -4,19 +4,34 @@ include("includes/g64_config.lua")
 
 -- Make level transitions work
 local spawnMarioOnceInited = false
+local inited = false
 hook.Add("InitPostEntity", "G64_CL_INIT_POST_ENTITY", function()
 	local marios = ents.FindByClass("g64_mario")
-	for k,v in ipairs(marios) do
-		if v.Owner:SteamID() == LocalPlayer():SteamID() then
-			net.Start("G64_RESETINVALIDPLAYER")
-			net.WriteEntity(v)
-			net.SendToServer()
-			v.Owner.IsMario = false
-			v.Owner.SM64LoadedMap = false
-			spawnMarioOnceInited = true
-			--InitializeWorld(0)
+	hook.Add("Think", "G64_STEAMID_WAIT_NOTNIL", function()
+		for k,v in ipairs(marios) do
+			--if v.Owner:SteamID() == nil then v:RemoveFromClient() end
+			--if LocalPlayer():SteamID() == nil then v:RemoveFromClient() end
+			if v.Owner.SteamID ~= nil and LocalPlayer().SteamID ~= nil then
+				hook.Remove("Think", "G64_STEAMID_WAIT_NOTNIL")
+				if v.Owner:SteamID() == LocalPlayer():SteamID() then
+					net.Start("G64_RESETINVALIDPLAYER")
+					net.WriteEntity(v)
+					net.SendToServer()
+					v.Owner.IsMario = false
+					v.Owner.SM64LoadedMap = false
+					if inited == false then
+						spawnMarioOnceInited = true
+					else
+						net.Start("G64_SPAWNMARIOATPLAYER")
+						net.SendToServer()
+					end
+					--InitializeWorld(0)
+					--net.Start("G64_SPAWNMARIOATPLAYER")
+					--net.SendToServer()
+				end
+			end
 		end
-	end
+	end)
 
 	LocalPlayer().CoinCount = 0
 	LocalPlayer().RedCoinCount = 0
@@ -24,6 +39,7 @@ hook.Add("InitPostEntity", "G64_CL_INIT_POST_ENTITY", function()
 end)
 
 hook.Add("G64Initialized", "G64_SPAWN_CHANGELEVEL_MARIO", function()
+	inited = true
 	if spawnMarioOnceInited == false then return end
 	net.Start("G64_SPAWNMARIOATPLAYER")
 	net.SendToServer()
@@ -90,24 +106,26 @@ local function AddPropMesh(prop)
 	if surf == nil then surf = 0 end
 	if terr == nil then terr = 0 end
 	
-	if prop:IsScripted() and prop:GetPhysicsObject():IsValid() and prop:GetPhysicsObject():IsCollisionEnabled() then
+	local phys = prop:GetPhysicsObject()
+
+	if prop:IsScripted() and phys:IsValid() and phys:IsCollisionEnabled() then
 		surfaceIds[#libsm64.EntMeshes+1] = {}
-		for k,convex in pairs(prop:GetPhysicsObject():GetMeshConvexes()) do
+		for k,convex in pairs(phys:GetMeshConvexes()) do
 			local finalMesh = {}
 			for k,vertex in pairs(convex) do
 				finalMesh[#finalMesh + 1] = vertex.pos
 			end
-			table.insert(surfaceIds[#libsm64.EntMeshes+1], libsm64.SurfaceObjectCreate(finalMesh, prop:GetPos(), prop:GetAngles(), surf, terr))
+			table.insert(surfaceIds[#libsm64.EntMeshes+1], libsm64.SurfaceObjectCreate(finalMesh, phys:GetPos(), phys:GetAngles(), surf, terr))
 			finalMesh = nil
 		end
 		table.insert(libsm64.EntMeshes, prop)
 		return
 	end
 	
-	if libsm64.AllowedBrushEnts[prop:GetClass()] then
+	if libsm64.AllowedBrushEnts[prop:GetClass()] and prop:GetBrushSurfaces() ~= nil and #prop:GetBrushSurfaces() > 0 then
 		local finalMesh = {}
 		local surfaces = prop:GetBrushSurfaces()
-		if not surfaces or #surfaces == 0 then return end
+		if surfaces == nil or #surfaces == 0 then return end
 		for k,surfInfo in pairs(surfaces) do
 			local vertices = surfInfo:GetVertices()
 			for i = 1, #vertices - 2 do
@@ -126,27 +144,27 @@ local function AddPropMesh(prop)
 		return
 	end
 	
-	local model = prop:GetModel()
-	if not model and not util.GetModelMeshes(model) then return end
-	
 	prop:PhysicsInit(6)
-	if prop:GetPhysicsObject():IsValid() == false then
+	phys = prop:GetPhysicsObject()
+	if phys:IsValid() == false then
 		prop:PhysicsDestroy()
 		return
 	end
 	
-	if prop:GetPhysicsObject():IsValid() and prop:GetPhysicsObject():IsCollisionEnabled() then
+	if phys:IsValid() and phys:IsCollisionEnabled() then
 		surfaceIds[#libsm64.EntMeshes+1] = {}
-		for k,convex in pairs(prop:GetPhysicsObject():GetMeshConvexes()) do
+		for k,convex in pairs(phys:GetMeshConvexes()) do
 			local finalMesh = {}
 			for k,vertex in pairs(convex) do
 				finalMesh[#finalMesh + 1] = vertex.pos
 			end
-			table.insert(surfaceIds[#libsm64.EntMeshes+1], libsm64.SurfaceObjectCreate(finalMesh, prop:GetPos(), prop:GetAngles(), surf, terr))
+			table.insert(surfaceIds[#libsm64.EntMeshes+1], libsm64.SurfaceObjectCreate(finalMesh, phys:GetPos(), phys:GetAngles(), surf, terr))
 			finalMesh = nil
 		end
 		table.insert(libsm64.EntMeshes, prop)
 	else
+		local model = prop:GetModel()
+		if not model or not util.GetModelMeshes(model) then return end
 		local finalMesh = {}
 		for k,mesh in pairs(util.GetModelMeshes(model)) do
 			for k,vertex in pairs(mesh.triangles) do
@@ -224,10 +242,6 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	
 	hook.Add("OnEntityCreated", "G64_ENTITY_CREATED", function(ent)
 		ProcessNewEntity(ent)
-
-		if ent:GetClass() == "gmod_cameraprop" then
-			LocalPlayer().CameraEnt = ent
-		end
 	end)
 
 	--hook.Add("HUDPaint", "ugh", function(ent)
@@ -271,13 +285,16 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 				
 				local mario = LocalPlayer().MarioEnt
 				for j,surfaceId in pairs(surfaceIds[k]) do
+					--if v:GetSolidFlags() ~= 256 then print(v, v:GetSolidFlags()) end
 					if v:GetCollisionGroup() == COLLISION_GROUP_WORLD or 
 					   v.DontCollideWithMario == true or 
 					   v == LocalPlayer():GetVehicle() or 
-					   (IsValid(mario) and mario.hasVanishCap == true) then
+					   (IsValid(mario) and mario.hasVanishCap == true) or
+					   v:IsSolid() == false then
 
 						libsm64.SurfaceObjectMove(surfaceId, noCollidePos, v:GetAngles())
 					else
+						libsm64.SurfaceObjectMove(surfaceId, v:GetPos(), v:GetAngles())
 						--local mat = v:GetWorldTransformMatrix()
 						--local w = math.sqrt(1.0 + mat:GetField(1,1) + mat:GetField(2,2) + mat:GetField(3,3)) / 2.0
 						--local w4 = 4.0 * w
@@ -287,7 +304,7 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 						--print(x,y,z,w)
 
 						--local a = RotMatToAng(v:GetWorldTransformMatrix())
-						libsm64.SurfaceObjectMove(surfaceId, v:GetPos(), v:GetAngles())
+						
 						--libsm64.SurfaceObjectMoveQ(surfaceId, v:GetPos(), x,y,z,w)
 					end
 				end
@@ -361,10 +378,6 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 			for k,v in ipairs(props) do
 				ProcessNewEntity(v)
 			end
-		end
-
-		if not IsValid(LocalPlayer().CameraEnt) then
-			LocalPlayer().CameraEnt = nil
 		end
 
 		libsm64.SetAutoUpdateState(GetConVar("g64_auto_update"):GetBool())
@@ -475,3 +488,24 @@ concommand.Add("g64_set_lives", function(ply, cmd, args)
 		libsm64.MarioSetLives(marioEnt.MarioId, tonumber(args[1]))
 	end
 end)
+
+--hook.Remove("HUDPaint", "G64_CL_THINK_DEBUG")
+--hook.Add("OnContextMenuOpen", "G64_CTX_OPEN", function()
+--	hook.Add("HUDPaint", "G64_CL_THINK_DEBUG", function()
+--		local trTab = util.GetPlayerTrace(LocalPlayer())
+--		local tr = util.TraceLine(trTab)
+--		local tx, ty = input.GetCursorPos()
+--		surface.SetFont( "Default" )
+--		surface.SetTextColor( 255, 255, 255 )
+--		surface.SetTextPos( tx + 30, ty + 30 ) 
+--		surface.DrawText( tr.Entity:GetClass() )
+--		surface.SetTextPos( tx + 30, ty + 40 ) 
+--		surface.DrawText( tr.Entity:GetCollisionGroup() )
+--		surface.SetTextPos( tx + 30, ty + 50 ) 
+--		surface.DrawText( tostring(bit.band(FSOLID_NOT_SOLID, v:GetSolidFlags()) == FSOLID_NOT_SOLID) )
+--	end)
+--end)
+--
+--hook.Add("OnContextMenuClose", "G64_CTX_CLOSE", function()
+--	hook.Remove("HUDPaint", "G64_CL_THINK_DEBUG")
+--end)

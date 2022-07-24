@@ -350,6 +350,7 @@ if CLIENT then
 
 			libsm64.AllowedEnts = {
 				prop_physics = true,
+				prop_dynamic = true,
 				prop_vehicle = true,
 				prop_vehicle_airboat = true,
 				prop_vehicle_apc = true,
@@ -371,7 +372,7 @@ if CLIENT then
 				func_lod = true,
 				func_rotating = true,
 				func_physbox = true,
-				func_useableladder = true
+				func_useableladder = true,
 			}
 			libsm64.EntMeshes = {}
 			libsm64.TimeScale = 1.0

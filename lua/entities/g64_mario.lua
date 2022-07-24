@@ -74,6 +74,8 @@ function ENT:Initialize()
 		end
 	end
 
+	print("Owner:",self.Owner)
+
 	self.OwnerHealth = self.Owner:Health()
 	self.OwnerMaxHealth = self.Owner:GetMaxHealth()
 	-- Remove Mario if already spawned or if the player is dead or driving
@@ -222,7 +224,7 @@ function ENT:OnRemove()
 				self.MarioId = -10
 				if self.Owner ~= nil && IsValid(self.Owner) then -- Is null if local player disconnects
 					self.Owner:SetNoDraw(false)
-					if self.Owner == LocalPlayer() and (g64utils.MarioHasFlag(self.marioFlags, 0x00000008) or g64utils.MarioHasFlag(self.marioFlags, 0x00000004) or g64utils.MarioHasFlag(self.marioFlags, 0x00000002)) then
+					if self.Owner == LocalPlayer() and self.marioFlags ~= nil and (g64utils.MarioHasFlag(self.marioFlags, 0x00000008) or g64utils.MarioHasFlag(self.marioFlags, 0x00000004) or g64utils.MarioHasFlag(self.marioFlags, 0x00000002)) then
 						StopAllTracks()
 					end
 				end
