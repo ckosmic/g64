@@ -32,6 +32,8 @@ end
 local animInfo = {}
 local networkedPos = Vector()
 local upOffset = Vector(0,0,5)
+local traceTable = {}
+local lastSafePos = Vector()
 animInfo.rotation = {}
 net.Receive("G64_TRANSMITMOVE", function(len, ply)
 	if IsValid(ply.MarioEnt) then
@@ -42,10 +44,13 @@ net.Receive("G64_TRANSMITMOVE", function(len, ply)
 		networkedPos.y = net.ReadInt(16)
 		networkedPos.z = net.ReadInt(16)
 		networkedPos = networkedPos + upOffset
+		local dist = mario:GetNWFloat("PlyMarioDist")
 		if not ply:InVehicle() then
 			ply:SetPos(networkedPos)
 			mario:SetPos(networkedPos)
+			mario.NetworkedPos = networkedPos
 		end
+		ply:SetGroundEntity(nil)
 
 		if not IsValid(ply.UsingCamera) then
 			ply:SetNWEntity("UsingCamera", ply)
@@ -133,6 +138,25 @@ net.Receive("G64_REQUESTCOLORS", function(len, ply)
 			net.Send(ply)
 		end
 	end
+end)
+
+timer.Remove("G64_SV_TP_SETUP_TIMER")
+timer.Create("G64_SV_TP_SETUP_TIMER", 10, 0, function() 
+	net.Start("G64_SENDTRIGGERINFO")
+		local triggers = ents.FindByClass("trigger_teleport")
+		net.WriteUInt(#triggers, 16)
+		for k,v in ipairs(triggers) do
+			local amins, amaxs = v:OBBMins(), v:OBBMaxs()
+			amins:Add(v:GetPos())
+			amaxs:Add(v:GetPos())
+			net.WriteVector(amins)
+			net.WriteVector(amaxs)
+			local keyValues = v:GetKeyValues()
+			local tpTarget = ents.FindByName(keyValues.target)[1]
+			net.WriteVector(tpTarget:GetPos())
+			net.WriteAngle(tpTarget:GetAngles())
+		end
+	net.Send(player.GetAll())
 end)
 
 hook.Add("EntityTakeDamage", "G64_PLAYER_DAMAGED", function(target, dmg)
@@ -232,9 +256,8 @@ end)
 
 hook.Add("SetupMove", "G64_SETUP_MOVE", function(ply, mv, cmd)
 	if not (IsValid(ply.MarioEnt) and ply.IsMario == true) then return end
+
 	if mv:KeyPressed(IN_USE) and ply:InVehicle() then
-		--local exitPt = ply:GetVehicle():CheckExitPoint(360, 2000)
-		--ply:SetPos(exitPt)
 		ply:ExitVehicle()
 	end
 end)
@@ -242,9 +265,9 @@ end)
 local function SpawnMarioAtPlayer(ply)
 	ply.MarioEnt = nil
 	local mario = ents.Create("g64_mario")
+	mario.Owner = ply
 	mario:SetPos(ply:GetPos())
 	mario:SetOwner(ply)
-	mario.Owner = ply
 	mario:Spawn()
 	mario:Activate()
 	undo.Create("Mario")

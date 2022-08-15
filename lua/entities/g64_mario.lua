@@ -11,8 +11,8 @@ ENT.Base = "base_entity"
 
 ENT.PrintName = "Mario"
 ENT.Author = "ckosmic"
-ENT.Spawnable = true
-ENT.AdminSpawnable = true
+ENT.Spawnable = false
+ENT.AdminSpawnable = false
 ENT.Category = "G64"
 ENT.RenderGroup = RENDERGROUP_BOTH
 
@@ -77,7 +77,7 @@ function ENT:Initialize()
 	self.OwnerHealth = self.Owner:Health()
 	self.OwnerMaxHealth = self.Owner:GetMaxHealth()
 	-- Remove Mario if already spawned or if the player is dead or driving
-	if IsValid(self.Owner.MarioEnt) or not self.Owner:Alive() or self.Owner:InVehicle() then self:RemoveInvalid() return end
+	if IsValid(self.Owner.MarioEnt) or not IsValid(self.Owner) or not self.Owner:Alive() or self.Owner:InVehicle() then self:RemoveInvalid() return end
 	self.Owner.IsMario = true
 	self.Owner:SetModelScale(0.8, 0)
 	
@@ -85,7 +85,7 @@ function ENT:Initialize()
 		self:SetNoDraw(true)
 
 		hook.Add("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex(), function()
-			if libsm64 == nil then return end
+			if libsm64 == nil or IsValid(self) == false or self.Owner == nil or IsValid(self.Owner) == false then return end
 
 			-- Check if the binary module or libsm64 are outdated, chat to player once if so
 			if libsm64.OutdatedNotified == nil and libsm64.GetModuleVersion ~= nil then
@@ -157,6 +157,10 @@ function ENT:Initialize()
 				
 				self.Mins = Vector(-160/libsm64.ScaleFactor, -160/libsm64.ScaleFactor, -160/libsm64.ScaleFactor)
 				self.Maxs = Vector( 160/libsm64.ScaleFactor,  160/libsm64.ScaleFactor,  160/libsm64.ScaleFactor)
+
+				if IsValid(self) == false or IsValid(self.Owner) == false or IsValid(LocalPlayer()) == false then 
+					return 
+				end
 
 				if self.Owner == LocalPlayer() then
 				-- Only runs on the player who spawned Mario
@@ -240,6 +244,7 @@ function ENT:OnRemove()
 				self.Owner:SelectWeapon("weapon_crowbar")
 				self.Owner:SelectWeapon(self.Owner.PreviousWeapon:GetClass())
 			end
+			self.Owner:SetMoveType(MOVETYPE_WALK)
 		end
 		if IsValid(self.Owner) then
 			self.Owner:SetModelScale(1, 0)
@@ -249,7 +254,9 @@ function ENT:OnRemove()
 end
 
 function ENT:OnReloaded()
-	self:Remove()
+	if CLIENT then
+		self:RemoveFromClient()
+	end
 end
 
 
@@ -967,15 +974,44 @@ if CLIENT then
 			if self.marioNumLives <= 0 and self.marioHealth <= 0 and self.marioDead == false then
 				self.marioDead = true
 				timer.Create("G64_RESPAWN_TIMER", 5, 1, function()
-					if self.marioNumLives == 0 and self.marioHealth == 0 then
+					if self.marioNumLives <= 0 and self.marioHealth <= 0 then
 						net.Start("G64_RESPAWNMARIO")
 						net.WriteEntity(self)
 						net.SendToServer()
 						lPlayer.LivesCount = 4
-					else
-						self.marioDead = false
+						libsm64.MarioSetLives(self.MarioId, lPlayer.LivesCount)
 					end
+					self.marioDead = false
 				end)
+			end
+		end
+
+		local marioBBMins = Vector(-16, -16, 0)
+		local marioBBMaxs = Vector( 16,  16, 72)
+		local bmins, bmaxs = Vector(), Vector()
+		local function CheckIfInTeleportTrigger()
+			local min_dist = math.huge
+			local curPos = self.marioCenter
+			local chosen = nil
+			for k,v in ipairs(g64utils.TeleportTriggers) do
+				local dist = curPos:DistToSqr(v.OBBMins)
+				if dist < min_dist then
+					min_dist = dist
+					chosen = v
+				end
+			end
+			if chosen then
+				local amins, amaxs = chosen.OBBMins, chosen.OBBMaxs
+				bmins:SetUnpacked(self.marioPos:Unpack())
+				bmins:Add(marioBBMins)
+				bmaxs:SetUnpacked(self.marioPos:Unpack())
+				bmaxs:Add(marioBBMaxs)
+				if (amins.x <= bmaxs.x and amaxs.x >= bmins.x) and
+				   (amins.y <= bmaxs.y and amaxs.y >= bmins.y) and
+				   (amins.z <= bmaxs.z and amaxs.z >= bmins.z) then
+					libsm64.SetMarioPosition(self.MarioId, chosen.TargetPos)
+					libsm64.SetMarioAngle(self.MarioId, math.rad(chosen.TargetAng[2]-90)/(math.pi*math.pi))
+				end
 			end
 		end
 		
@@ -1036,11 +1072,7 @@ if CLIENT then
 			self.marioNumLives = marioState[10]
 
 			lPlayer.LivesCount = self.marioNumLives
-
-			if not g64utils.WithinBounds(self.lerpedPos, lPlayer:GetPos(), 1000) then
-				-- Probably used a teleporter, so teleport Mario to the player
-				libsm64.SetMarioPosition(self.MarioId, lPlayer:GetPos())
-			end
+			
 			
 			LoadStaticSurfaces()
 			SpawnParticles()
@@ -1049,6 +1081,7 @@ if CLIENT then
 			CheckForSpecialCaps()
 			CheckIfDead()
 			CheckForCamera()
+			CheckIfInTeleportTrigger()
 			
 			self.bufferIndex = 1 - self.bufferIndex
 			

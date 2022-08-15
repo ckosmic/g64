@@ -5,8 +5,8 @@ ENT.Base = "base_entity"
 
 ENT.PrintName = "Wing Cap"
 ENT.Author = "ckosmic"
-ENT.Spawnable = true
-ENT.AdminSpawnable = true
+ENT.Spawnable = false
+ENT.AdminSpawnable = false
 ENT.Category = "G64"
 
 function ENT:SpawnFunction(ply, tr, ClassName)

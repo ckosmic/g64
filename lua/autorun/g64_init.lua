@@ -19,6 +19,8 @@ if CLIENT then
 
 	include("includes/g64_config.lua")
 
+	local initWorldCalled = false
+
 	local moduleName = "gmcl_g64_win64.dll"
 	--if(jit.arch == "x86") then
 	--	moduleName = "gmcl_g64_win32.dll"
@@ -314,6 +316,9 @@ if CLIENT then
 	end
 
 	function InitializeWorld(timeout)
+		if initWorldCalled == true then return end
+		initWorldCalled = true
+
 		if jit.arch == "x86" then
 			libsm64 = {}
 			LoadFailure()
@@ -373,6 +378,8 @@ if CLIENT then
 				func_rotating = true,
 				func_physbox = true,
 				func_useableladder = true,
+				func_platrot = true,
+				func_pushable = true,
 			}
 			libsm64.EntMeshes = {}
 			libsm64.TimeScale = 1.0
@@ -471,3 +478,4 @@ end
 drive.Register("G64_DRIVE",
 {
 }, "drive_base")
+

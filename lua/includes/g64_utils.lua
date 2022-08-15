@@ -306,6 +306,8 @@ if CLIENT then
             end
         end
     end
+
+    g64utils.TeleportTriggers = {}
 end
 
 hook.Call("G64UtilsInitialized")

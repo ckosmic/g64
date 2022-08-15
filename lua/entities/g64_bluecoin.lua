@@ -5,8 +5,8 @@ ENT.Base = "base_entity"
 
 ENT.PrintName = "Blue Coin"
 ENT.Author = "ckosmic"
-ENT.Spawnable = true
-ENT.AdminSpawnable = true
+ENT.Spawnable = false
+ENT.AdminSpawnable = false
 ENT.Category = "G64"
 
 ENT.CoinColor = Color(120, 120, 255)

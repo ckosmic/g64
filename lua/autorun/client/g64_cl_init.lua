@@ -6,11 +6,9 @@ include("includes/g64_config.lua")
 local spawnMarioOnceInited = false
 local inited = false
 hook.Add("InitPostEntity", "G64_CL_INIT_POST_ENTITY", function()
-	local marios = ents.FindByClass("g64_mario")
 	hook.Add("Think", "G64_STEAMID_WAIT_NOTNIL", function()
+		local marios = ents.FindByClass("g64_mario")
 		for k,v in ipairs(marios) do
-			--if v.Owner:SteamID() == nil then v:RemoveFromClient() end
-			--if LocalPlayer():SteamID() == nil then v:RemoveFromClient() end
 			if v.Owner.SteamID ~= nil and LocalPlayer().SteamID ~= nil then
 				hook.Remove("Think", "G64_STEAMID_WAIT_NOTNIL")
 				if v.Owner:SteamID() == LocalPlayer():SteamID() then
@@ -22,12 +20,10 @@ hook.Add("InitPostEntity", "G64_CL_INIT_POST_ENTITY", function()
 					if inited == false then
 						spawnMarioOnceInited = true
 					else
+						inited = true
 						net.Start("G64_SPAWNMARIOATPLAYER")
 						net.SendToServer()
 					end
-					--InitializeWorld(0)
-					--net.Start("G64_SPAWNMARIOATPLAYER")
-					--net.SendToServer()
 				end
 			end
 		end
@@ -41,8 +37,10 @@ end)
 hook.Add("G64Initialized", "G64_SPAWN_CHANGELEVEL_MARIO", function()
 	inited = true
 	if spawnMarioOnceInited == false then return end
-	net.Start("G64_SPAWNMARIOATPLAYER")
-	net.SendToServer()
+	timer.Create("blah", 1, 1, function()
+		net.Start("G64_SPAWNMARIOATPLAYER")
+		net.SendToServer()
+	end)
 end)
 
 -- Timer for the the libsm64 game loop
@@ -453,6 +451,21 @@ net.Receive("G64_CHANGESURFACEINFO", function(len)
 	ent.G64TerrainType = net.ReadUInt(16)
 	libsm64.RemoveCollider( ent )
 	libsm64.AddColliderToQueue( ent )
+end)
+
+net.Receive("G64_SENDTRIGGERINFO", function(len)
+	table.Empty(g64utils.TeleportTriggers)
+	local numTriggers = net.ReadUInt(16)
+	for i=1, numTriggers do
+		local mins, maxs = net.ReadVector(), net.ReadVector()
+		local targetPos, targetAng = net.ReadVector(), net.ReadAngle()
+		table.insert(g64utils.TeleportTriggers, {
+			OBBMins = mins,
+			OBBMaxs = maxs,
+			TargetPos = targetPos,
+			TargetAng = targetAng
+		})
+	end
 end)
 
 concommand.Add("g64_load_module", function(ply, cmd, args)

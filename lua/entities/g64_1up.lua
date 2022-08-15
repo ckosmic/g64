@@ -6,8 +6,8 @@ ENT.Base = "base_entity"
 
 ENT.PrintName = "1-Up"
 ENT.Author = "ckosmic"
-ENT.Spawnable = true
-ENT.AdminSpawnable = true
+ENT.Spawnable = false
+ENT.AdminSpawnable = false
 ENT.Category = "G64"
 ENT.RenderGroup = RENDERGROUP_TRANSLUCENT
 
