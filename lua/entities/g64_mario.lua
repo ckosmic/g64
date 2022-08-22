@@ -80,6 +80,7 @@ function ENT:Initialize()
 	if IsValid(self.Owner.MarioEnt) or not IsValid(self.Owner) or not self.Owner:Alive() or self.Owner:InVehicle() then self:RemoveInvalid() return end
 	self.Owner.IsMario = true
 	self.Owner:SetModelScale(0.8, 0)
+	self.Owner.PreviousWeapon = self.Owner:GetActiveWeapon()
 	
 	if CLIENT then
 		self:SetNoDraw(true)
@@ -182,8 +183,6 @@ function ENT:Initialize()
 	else
 		self:SetModel("models/hunter/misc/sphere075x075.mdl") -- Easiest circle shadow ever
 		self.Owner:SetMaxHealth(8)
-		self.Owner.PreviousWeapon = self.Owner:GetActiveWeapon()
-		self.Owner:SetActiveWeapon(NULL)
 		if self.Owner:FlashlightIsOn() then self.Owner:Flashlight(false) end
 	end
 	
@@ -202,6 +201,9 @@ function ENT:Initialize()
 			drive.PlayerStartDriving(ply, self, "G64_DRIVE")
 			ply:SetObserverMode(OBS_MODE_CHASE)
 		end
+		timer.Create("G64_DELAY_WEAPON_SWITCH" .. self.MarioId, 1, 1, function()
+			self.Owner:SetActiveWeapon(NULL)
+		end)
 	end)
 end
 
@@ -218,6 +220,9 @@ function ENT:OnRemove()
 				hook.Remove("CalcVehicleView", "G64_CALCVEHICLEVIEW" .. self.MarioId)
 				hook.Remove("HUDItemPickedUp", "G64_ITEM_PICKED_UP" .. self.MarioId)
 				hook.Remove("HUDShouldDraw", "G64_HUD_SHOULD_DRAW" .. self.MarioId)
+				hook.Remove("StartCommand", "G64_START_COMMAND" .. self.MarioId)
+
+				timer.Remove("G64_RESPAWN_TIMER" .. self.MarioId)
 				
 				if IsValid(self.cameraOverride) then
 					self.cameraOverride:SetNoDraw(false)
@@ -232,6 +237,7 @@ function ENT:OnRemove()
 				end
 			end
 		else
+			timer.Remove("G64_DELAY_WEAPON_SWITCH" .. self.MarioId)
 			if not IsValid(self.Owner) then return end
 			self.Owner:SetObserverMode(OBS_MODE_NONE)
 			self.Owner:SetMaxHealth(self.OwnerMaxHealth)
@@ -971,9 +977,10 @@ if CLIENT then
 		end
 
 		local function CheckIfDead()
+			--print(lPlayer.LivesCount, self.marioNumLives)
 			if self.marioNumLives <= 0 and self.marioHealth <= 0 and self.marioDead == false then
 				self.marioDead = true
-				timer.Create("G64_RESPAWN_TIMER", 5, 1, function()
+				timer.Create("G64_RESPAWN_TIMER" .. self.MarioId, 5, 1, function()
 					if self.marioNumLives <= 0 and self.marioHealth <= 0 then
 						net.Start("G64_RESPAWNMARIO")
 						net.WriteEntity(self)
@@ -1043,6 +1050,13 @@ if CLIENT then
 			end
 		
 			local facing = lPlayer:GetAimVector()
+			if IsValid(self.cameraOverride) then
+				if IsValid(self.cameraOverride:GetentTrack()) then
+					facing = self.marioPos - self.cameraOverride:GetPos()
+				else
+					facing = self.cameraOverride:GetForward()
+				end
+			end
 			if tickCount > 0 then
 				stateBuffers[self.MarioId][2] = libsm64.GetMarioTableReference(self.MarioId, 6+8)
 				vertexBuffers[self.MarioId][2] = libsm64.GetMarioTableReference(self.MarioId, 5+8)
@@ -1316,6 +1330,45 @@ if CLIENT then
 			if GetConVar("g64_upd_col_flag"):GetBool() then
 				TransmitColors()
 			end
+		end)
+
+		hook.Add("InputMouseApply", "G64_START_COMMAND" .. self.MarioId, function(cmd, x, y, ang)
+			local x = libsm64.GetGamepadAxis("rAxisX")
+			local y = libsm64.GetGamepadAxis("rAxisY")
+			cmd:SetViewAngles(ang + Angle(y, -x, 0) * (GetConVar("g64_gp_sensitivity"):GetFloat()/100))
+		end)
+
+		hook.Add("CreateMove", "G64_CREATEMOVE" .. self.MarioId, function(cmd)
+			local buttons = cmd:GetButtons()
+			if lPlayer:InVehicle() then
+				if libsm64.GetGamepadAxis("rTrigger") > 0.05 then
+					buttons = bit.bor(buttons, IN_FORWARD)
+				end
+				if libsm64.GetGamepadAxis("lTrigger") > 0.05 then
+					buttons = bit.bor(buttons, IN_BACK)
+				end
+				if libsm64.GetGamepadAxis("lAxisX") > 0.05 then
+					buttons = bit.bor(buttons, IN_MOVERIGHT)
+				elseif libsm64.GetGamepadAxis("lAxisX") < -0.05 then
+					buttons = bit.bor(buttons, IN_MOVELEFT)
+				end
+				if libsm64.GetGamepadButton("xButton") == true then
+					buttons = bit.bor(buttons, IN_SPEED)
+				end
+				if libsm64.GetGamepadButton("aButton") == true then
+					buttons = bit.bor(buttons, IN_JUMP)
+				end
+				if libsm64.GetGamepadButton("dPadUp") == true then
+					cmd:SetMouseWheel(1)
+				end
+				if libsm64.GetGamepadButton("dPadDown") == true then
+					cmd:SetMouseWheel(-1)
+				end
+			end
+			if libsm64.GetGamepadButton("yButton") == true then
+				buttons = bit.bor(buttons, IN_USE)
+			end
+			cmd:SetButtons(buttons)
 		end)
 
 	end

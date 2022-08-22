@@ -159,6 +159,7 @@ if CLIENT then
 			function ParseBSP(finished_cb)
 				include("includes/g64_luabsp.lua")
 				local bsp = luabsp.LoadMap(game:GetMap())
+				print("[G64] Parsing .bsp file (version " .. bsp.version .. ")...")
 				
 				-- Displacements aren't included in map phys geometry,
 				-- so we have to do the next cursed thing: bsp parsing

@@ -311,6 +311,46 @@ hook.Add("PopulateToolMenu", "G64_CREATE_MENU_SETTINGS", function()
 		panel:AddItem(binder_freemove)
 	end)
 
+	spawnmenu.AddToolMenuOption("Utilities", "G64", "G64_Gamepad", "#Gamepad", "", "", function(panel)
+		panel:ClearControls()
+		
+		local cur_connected = vgui.Create("RichText")
+		cur_connected:SetVerticalScrollbarEnabled(false)
+		function cur_connected:PerformLayout()
+			self:SetContentAlignment(5)
+			self:SetFontInternal("DermaDefaultBold")
+		end
+
+		local sens_slider = vgui.Create("DNumSlider")
+		sens_slider:SetText("Camera sensitivity")
+		sens_slider:SetMin(0)
+		sens_slider:SetMax(200)
+		sens_slider:SetDecimals(0)
+		sens_slider:SetConVar("g64_gp_sensitivity")
+		sens_slider:SetDark(true)
+		
+		
+		panel:AddItem(cur_connected)
+		panel:AddItem(sens_slider)
+
+		hook.Remove("Think", "G64_UPDATE_GAMEPAD_STATUS")
+		hook.Add("Think", "G64_UPDATE_GAMEPAD_STATUS", function()
+			if IsValid(cur_connected) then
+				local gp_name = libsm64.GetGamepadName()
+				cur_connected:SetText("")
+				if gp_name == "No gamepad connected." then
+					cur_connected:InsertColorChange(200,0,0,255)
+					cur_connected:AppendText(libsm64.GetGamepadName())
+				else
+					cur_connected:InsertColorChange(0,0,0,255)
+					cur_connected:AppendText("Connected gamepad: ")
+					cur_connected:InsertColorChange(0,200,0,255)
+					cur_connected:AppendText(libsm64.GetGamepadName())
+				end
+			end
+		end)
+	end)
+
 	spawnmenu.AddToolMenuOption("Utilities", "G64", "G64_Emotes", "#Emotes", "", "", function(panel)
 		panel:ClearControls()
 		g64emote.LoadActiveEmotes()

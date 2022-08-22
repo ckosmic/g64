@@ -32,4 +32,6 @@ if CLIENT then
 	CreateClientConVar("g64_remove", KEY_R, true)
 	CreateClientConVar("g64_emotemenu", KEY_LALT, true)
 	CreateClientConVar("g64_freemove", KEY_V, true)
+
+	CreateClientConVar("g64_gp_sensitivity", "75", true, false)
 end

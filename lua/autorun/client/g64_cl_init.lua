@@ -382,6 +382,8 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 	end)
 
 	hook.Add("Think", "G64_CL_THINK", function()
+		libsm64.GeneralUpdate()
+
 		-- Update entity attack timers
 		local frameTime = FrameTime()
 		for i=#allEnts,1,-1 do

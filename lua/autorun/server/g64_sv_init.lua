@@ -45,11 +45,6 @@ net.Receive("G64_TRANSMITMOVE", function(len, ply)
 		networkedPos.z = net.ReadInt(16)
 		networkedPos = networkedPos + upOffset
 		local dist = mario:GetNWFloat("PlyMarioDist")
-		if not ply:InVehicle() then
-			ply:SetPos(networkedPos)
-			mario:SetPos(networkedPos)
-			mario.NetworkedPos = networkedPos
-		end
 		ply:SetGroundEntity(nil)
 
 		if not IsValid(ply.UsingCamera) then
@@ -69,8 +64,14 @@ net.Receive("G64_TRANSMITMOVE", function(len, ply)
 		local health = net.ReadUInt(4)
 		ply:SetHealth(health)
 
-		if health <= 0 and ply:InVehicle() then
-			ply:ExitVehicle()
+		if ply:InVehicle() then
+			if health <= 0 then
+				ply:ExitVehicle()
+			end
+		else
+			ply:SetPos(networkedPos)
+			mario:SetPos(networkedPos)
+			mario.NetworkedPos = networkedPos
 		end
 		
 		local flags = net.ReadUInt(32)
