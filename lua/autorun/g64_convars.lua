@@ -29,6 +29,7 @@ if CLIENT then
 	CreateClientConVar("g64_jump", KEY_SPACE, true)
 	CreateClientConVar("g64_duck", KEY_LCONTROL, true)
 	CreateClientConVar("g64_attack", MOUSE_LEFT, true)
+	CreateClientConVar("g64_pickup", MOUSE_RIGHT, true)
 	CreateClientConVar("g64_remove", KEY_R, true)
 	CreateClientConVar("g64_emotemenu", KEY_LALT, true)
 	CreateClientConVar("g64_freemove", KEY_V, true)

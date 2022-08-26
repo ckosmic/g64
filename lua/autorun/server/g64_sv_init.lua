@@ -381,6 +381,34 @@ net.Receive("G64_COLLECTEDCOIN", function(len, ply)
 	end
 end)
 
+net.Receive("G64_UPDATEHELDOBJECT", function(len, ply)
+	if ply.IsMario == true then
+		local ent = net.ReadEntity()
+		local pos = net.ReadVector()
+		local ang = net.ReadAngle()
+		local letGo = net.ReadBool()
+		if IsValid(ent) then
+			if letGo then
+				ent:SetNotSolid(false)
+				local phys = ent:GetPhysicsObject()
+				if IsValid(phys) then
+					phys:EnableMotion(true)
+					phys:Wake()
+					phys:SetVelocity(ang:Forward()*200 + Vector(0,0,200))
+				end
+			else
+				ent:SetPos(pos)
+				ent:SetAngles(ang)
+				ent:SetNotSolid(true)
+				local phys = ent:GetPhysicsObject()
+				if IsValid(phys) then
+					phys:EnableMotion(false)
+				end
+			end
+		end
+	end
+end)
+
 local meta = FindMetaTable("Player")
 
 meta.DefaultGodEnable = meta.DefaultGodEnable or meta.GodEnable

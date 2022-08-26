@@ -134,6 +134,7 @@ if CLIENT then
 	g64utils.Inputs[2] = false
 	g64utils.Inputs[3] = false
 	g64utils.Inputs[4] = false
+    g64utils.Inputs[5] = false
     g64utils.GetInputTable = function()
         local inputs = g64utils.Inputs
         if input.IsButtonDown(GetConVar("g64_forward"):GetInt()) then
@@ -173,6 +174,13 @@ if CLIENT then
             inputs[4] = true
         else
             inputs[4] = false
+        end
+
+        if input.IsButtonDown(GetConVar("g64_pickup"):GetInt()) or libsm64.GetGamepadButton("bButton") == true then
+            inputs[5] = true
+            inputs[3] = true
+        else
+            inputs[5] = false
         end
 
         return g64utils.Inputs

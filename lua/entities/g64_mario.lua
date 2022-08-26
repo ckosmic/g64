@@ -384,6 +384,10 @@ if CLIENT then
 		self.hasVanishCap = false
 		self.marioDead = false
 		self.cameraOverride = nil
+		self.holdingObject = false
+		self.heldObject = nil
+		self.waitForHold = false
+		self.pickupMode = false
 		self.view = {
 			origin = Vector(),
 			angles = Angle(),
@@ -800,16 +804,37 @@ if CLIENT then
 							net.SendToServer()
 						end
 					else
-						tr.Entity.HitStunTimer = 0.25
-						local soundArg = GetSoundArg(g64types.SM64SoundTable.SOUND_ACTION_HIT)
-						libsm64.PlaySoundGlobal(soundArg)
-						net.Start("G64_DAMAGEENTITY")
-							net.WriteEntity(self)
-							net.WriteEntity(tr.Entity)
-							net.WriteVector(self.marioForward)
-							net.WriteVector(tr.HitPos)
-							net.WriteUInt(15, 8)
-						net.SendToServer()
+						local volume = 1000000
+						if self.pickupMode == true then
+							tr.Entity:PhysicsInit(6)
+							local phys = tr.Entity:GetPhysicsObject()
+							if tr.Entity:IsValid() == false then
+								tr.Entity:PhysicsDestroy()
+							else
+								volume = phys:GetVolume()
+							end
+							tr.Entity:PhysicsDestroy()
+							self.pickupMode = false
+						end
+
+						if volume < 30000 then
+							if self.holdingObject == false and IsValid(self.heldObject) == false then
+								libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_PICKING_UP)
+								self.heldObject = tr.Entity
+								self.waitForHold = true
+							end
+						else
+							tr.Entity.HitStunTimer = 0.25
+							local soundArg = GetSoundArg(g64types.SM64SoundTable.SOUND_ACTION_HIT)
+							libsm64.PlaySoundGlobal(soundArg)
+							net.Start("G64_DAMAGEENTITY")
+								net.WriteEntity(self)
+								net.WriteEntity(tr.Entity)
+								net.WriteVector(self.marioForward)
+								net.WriteVector(tr.HitPos)
+								net.WriteUInt(15, 8)
+							net.SendToServer()
+						end
 					end
 				end
 			end
@@ -1021,6 +1046,41 @@ if CLIENT then
 				end
 			end
 		end
+
+		local function UpdateHeldObject()
+			--print(self.holdingObject, self.heldObject, IsValid(self.heldObject))
+			if self.waitForHold == true then
+				if self.holdingObject == true then
+					self.waitForHold = false
+				end
+			else
+				if IsValid(self.heldObject) then
+					local mins, maxs = self.heldObject:GetRenderBounds()
+
+					local heldPos = self.lerpedPos + self.marioForward * ((maxs.x - mins.x)/2+10)
+					heldPos.z = heldPos.z + (maxs.z - mins.z)/4
+					
+					if self.holdingObject == true then
+						net.Start("G64_UPDATEHELDOBJECT")
+							net.WriteEntity(self.heldObject)
+							net.WriteVector(heldPos)
+							net.WriteAngle(self.marioForward:Angle())
+							net.WriteBool(false)
+						net.SendToServer()
+						self.heldObject:SetNetworkOrigin(heldPos)
+					else
+						net.Start("G64_UPDATEHELDOBJECT")
+							net.WriteEntity(self.heldObject)
+							net.WriteVector(heldPos)
+							net.WriteAngle(self.marioForward:Angle())
+							net.WriteBool(true)
+						net.SendToServer()
+						self.heldObject = nil
+						self.pickupMode = false
+					end
+				end
+			end
+		end
 		
 		local hitPos = Vector()
 		local animInfo
@@ -1044,6 +1104,9 @@ if CLIENT then
 					end
 				else
 					vDown = false
+				end
+				if inputs[5] == true then
+					self.pickupMode = true
 				end
 			else
 				inputs = g64utils.GetZeroInputTable()
@@ -1084,6 +1147,7 @@ if CLIENT then
 			self.marioCenter.z = self.marioCenter.z + 50 / libsm64.ScaleFactor
 			self.marioAction = marioState[5]
 			self.marioNumLives = marioState[10]
+			self.holdingObject = marioState[11]
 
 			lPlayer.LivesCount = self.marioNumLives
 			
@@ -1197,6 +1261,7 @@ if CLIENT then
 			end
 
 			VehicleTick()
+			UpdateHeldObject()
 
 			self:NextThink(CurTime())
 			return true
