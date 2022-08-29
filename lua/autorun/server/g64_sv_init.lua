@@ -141,23 +141,38 @@ net.Receive("G64_REQUESTCOLORS", function(len, ply)
 	end
 end)
 
-timer.Remove("G64_SV_TP_SETUP_TIMER")
-timer.Create("G64_SV_TP_SETUP_TIMER", 10, 0, function() 
-	net.Start("G64_SENDTRIGGERINFO")
-		local triggers = ents.FindByClass("trigger_teleport")
-		net.WriteUInt(#triggers, 16)
-		for k,v in ipairs(triggers) do
-			local amins, amaxs = v:OBBMins(), v:OBBMaxs()
-			amins:Add(v:GetPos())
-			amaxs:Add(v:GetPos())
-			net.WriteVector(amins)
-			net.WriteVector(amaxs)
-			local keyValues = v:GetKeyValues()
-			local tpTarget = ents.FindByName(keyValues.target)[1]
-			net.WriteVector(tpTarget:GetPos())
-			net.WriteAngle(tpTarget:GetAngles())
+hook.Add("InitPostEntity", "G64_SV_INIT_POST_ENTITY", function()
+	local triggers = ents.FindByClass("trigger_teleport")
+	for k,v in ipairs(triggers) do
+		local amins, amaxs = v:GetRotatedAABB(v:OBBMins(), v:OBBMaxs())
+		local keyValues = v:GetKeyValues()
+		local tpTarget = ents.FindByName(keyValues.target)[1]
+
+		local tg = ents.Create("g64_tptrigger")
+		tg.PhysMesh = {}
+		local surfaces = v:GetBrushSurfaces()
+		for k,surfInfo in pairs(surfaces) do
+			local vertices = surfInfo:GetVertices()
+			for i = 1, #vertices - 2 do
+				local len = #tg.PhysMesh
+				tg.PhysMesh[len + 1] = { pos = vertices[1] }
+				tg.PhysMesh[len + 2] = { pos = vertices[i + 1] }
+				tg.PhysMesh[len + 3] = { pos = vertices[i + 2] }
+			end
 		end
-	net.Send(player.GetAll())
+
+		tg:Spawn()
+		tg:SetPos(v:GetPos())
+		tg:SetAngles(v:GetAngles())
+		
+		if IsValid(tpTarget) then
+			tg.TargetPos = tpTarget:GetPos()
+			tg.TargetAng = tpTarget:GetAngles()
+		else
+			tg.TargetPos = nil
+			tg.TargetAng = nil
+		end
+	end
 end)
 
 hook.Add("EntityTakeDamage", "G64_PLAYER_DAMAGED", function(target, dmg)
@@ -386,15 +401,17 @@ net.Receive("G64_UPDATEHELDOBJECT", function(len, ply)
 		local ent = net.ReadEntity()
 		local pos = net.ReadVector()
 		local ang = net.ReadAngle()
-		local letGo = net.ReadBool()
+		local arg = net.ReadUInt(8)
 		if IsValid(ent) then
-			if letGo then
+			if arg < 2 then
 				ent:SetNotSolid(false)
 				local phys = ent:GetPhysicsObject()
 				if IsValid(phys) then
 					phys:EnableMotion(true)
 					phys:Wake()
-					phys:SetVelocity(ang:Forward()*200 + Vector(0,0,200))
+					if arg == 1 then
+						phys:SetVelocity(ang:Forward()*200 + Vector(0,0,200))
+					end
 				end
 			else
 				ent:SetPos(pos)

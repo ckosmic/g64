@@ -5,7 +5,7 @@ ENT.Base = "base_entity"
 
 ENT.PrintName = "Wing Cap"
 ENT.Author = "ckosmic"
-ENT.Spawnable = false
+ENT.Spawnable = true
 ENT.AdminSpawnable = false
 ENT.Category = "G64"
 

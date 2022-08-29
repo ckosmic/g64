@@ -5,7 +5,7 @@ ENT.Base = "base_entity"
 
 ENT.PrintName = "Vanish Cap"
 ENT.Author = "ckosmic"
-ENT.Spawnable = false
+ENT.Spawnable = true
 ENT.AdminSpawnable = false
 ENT.Category = "G64"
 ENT.RenderGroup = RENDERGROUP_TRANSLUCENT

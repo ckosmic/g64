@@ -11,7 +11,7 @@ ENT.Base = "base_entity"
 
 ENT.PrintName = "Mario"
 ENT.Author = "ckosmic"
-ENT.Spawnable = false
+ENT.Spawnable = true
 ENT.AdminSpawnable = false
 ENT.Category = "G64"
 ENT.RenderGroup = RENDERGROUP_BOTH
@@ -353,6 +353,11 @@ if CLIENT then
 	end
 
 	function ENT:InitSomeVariables()
+		if libsm64.XDelta == nil or libsm64.YDelta == nil or libsm64.WorldMin == nil or 
+		libsm64.WorldMax == nil or libsm64.XChunks == nil or libsm64.YChunks == nil or 
+		libsm64.XDispChunks == nil or libsm64.YDispChunks == nil then
+			self:RemoveFromClient()
+		end
 		xDelta = libsm64.XDelta
 		yDelta = libsm64.YDelta
 		worldMin = libsm64.WorldMin
@@ -388,6 +393,7 @@ if CLIENT then
 		self.heldObject = nil
 		self.waitForHold = false
 		self.pickupMode = false
+		self.dropMethod = -1
 		self.view = {
 			origin = Vector(),
 			angles = Angle(),
@@ -647,7 +653,7 @@ if CLIENT then
 		end
 		
 		hook.Add("G64GameTick", "G64_MARIO_TICK" .. self.MarioId, function()
-			if self.tickTime < 0 then return end
+			if self.tickTime and self.tickTime < 0 then return end
 			tickDeltaTime = SysTime() - self.tickTime
 			-- If hasn't received any update in > 1.5s, don't tick and don't draw
 			if tickDeltaTime > 1.5 then
@@ -773,6 +779,9 @@ if CLIENT then
 			g64_bluecoin = true,
 			g64_1up = true
 		}
+		local pickUpBlacklist = {
+			
+		}
 		local function PerformGroundAttacks()
 			if self:MarioIsAttacking() then
 				local tr = util.TraceHull({
@@ -805,10 +814,10 @@ if CLIENT then
 						end
 					else
 						local volume = 1000000
-						if self.pickupMode == true then
+						if self.pickupMode == true and not pickUpBlacklist[tr.Entity:GetClass()] then
 							tr.Entity:PhysicsInit(6)
 							local phys = tr.Entity:GetPhysicsObject()
-							if tr.Entity:IsValid() == false then
+							if phys:IsValid() == false then
 								tr.Entity:PhysicsDestroy()
 							else
 								volume = phys:GetVolume()
@@ -817,7 +826,8 @@ if CLIENT then
 							self.pickupMode = false
 						end
 
-						if volume < 30000 then
+						print(volume)
+						if volume < 65000 then
 							if self.holdingObject == false and IsValid(self.heldObject) == false then
 								libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_PICKING_UP)
 								self.heldObject = tr.Entity
@@ -1018,35 +1028,6 @@ if CLIENT then
 			end
 		end
 
-		local marioBBMins = Vector(-16, -16, 0)
-		local marioBBMaxs = Vector( 16,  16, 72)
-		local bmins, bmaxs = Vector(), Vector()
-		local function CheckIfInTeleportTrigger()
-			local min_dist = math.huge
-			local curPos = self.marioCenter
-			local chosen = nil
-			for k,v in ipairs(g64utils.TeleportTriggers) do
-				local dist = curPos:DistToSqr(v.OBBMins)
-				if dist < min_dist then
-					min_dist = dist
-					chosen = v
-				end
-			end
-			if chosen then
-				local amins, amaxs = chosen.OBBMins, chosen.OBBMaxs
-				bmins:SetUnpacked(self.marioPos:Unpack())
-				bmins:Add(marioBBMins)
-				bmaxs:SetUnpacked(self.marioPos:Unpack())
-				bmaxs:Add(marioBBMaxs)
-				if (amins.x <= bmaxs.x and amaxs.x >= bmins.x) and
-				   (amins.y <= bmaxs.y and amaxs.y >= bmins.y) and
-				   (amins.z <= bmaxs.z and amaxs.z >= bmins.z) then
-					libsm64.SetMarioPosition(self.MarioId, chosen.TargetPos)
-					libsm64.SetMarioAngle(self.MarioId, math.rad(chosen.TargetAng[2]-90)/(math.pi*math.pi))
-				end
-			end
-		end
-
 		local function UpdateHeldObject()
 			--print(self.holdingObject, self.heldObject, IsValid(self.heldObject))
 			if self.waitForHold == true then
@@ -1061,25 +1042,50 @@ if CLIENT then
 					heldPos.z = heldPos.z + (maxs.z - mins.z)/4
 					
 					if self.holdingObject == true then
+						-- Holding object
 						net.Start("G64_UPDATEHELDOBJECT")
 							net.WriteEntity(self.heldObject)
 							net.WriteVector(heldPos)
 							net.WriteAngle(self.marioForward:Angle())
-							net.WriteBool(false)
+							net.WriteUInt(2, 8)
 						net.SendToServer()
 						self.heldObject:SetNetworkOrigin(heldPos)
 					else
+						-- Dropping or throwing object
 						net.Start("G64_UPDATEHELDOBJECT")
 							net.WriteEntity(self.heldObject)
 							net.WriteVector(heldPos)
 							net.WriteAngle(self.marioForward:Angle())
-							net.WriteBool(true)
+							net.WriteUInt(self.dropMethod, 8)
 						net.SendToServer()
 						self.heldObject = nil
 						self.pickupMode = false
 					end
+				else
+					-- Reset mario holding state if the prop is deleted
+					if self.holdingObject == true then
+						libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_IDLE)
+					end
 				end
 			end
+		end
+
+		local function SetReverb()
+			local effect = GetConVar("dsp_automatic"):GetInt()
+			print(effect)
+			if effect == 0 then
+				libsm64.SetGlobalReverb(0x00)
+			elseif effect >= 60 and effect <= 99 then
+				-- Automatic DSP
+				libsm64.SetGlobalReverb(0x3f)
+			end
+			--if effect == 0 then
+			--	libsm64.SetGlobalReverb(0x00)
+			--elseif effect == 71 then
+			--	libsm64.SetGlobalReverb(0x20)
+			--elseif effect >= 60 and effect <= 69 then
+			--	libsm64.SetGlobalReverb(0x3f)
+			--end
 		end
 		
 		local hitPos = Vector()
@@ -1148,6 +1154,7 @@ if CLIENT then
 			self.marioAction = marioState[5]
 			self.marioNumLives = marioState[10]
 			self.holdingObject = marioState[11]
+			self.dropMethod = marioState[12]
 
 			lPlayer.LivesCount = self.marioNumLives
 			
@@ -1159,7 +1166,7 @@ if CLIENT then
 			CheckForSpecialCaps()
 			CheckIfDead()
 			CheckForCamera()
-			CheckIfInTeleportTrigger()
+			--SetReverb()
 			
 			self.bufferIndex = 1 - self.bufferIndex
 			
@@ -1193,6 +1200,9 @@ if CLIENT then
 			
 			if tr.Hit == true then
 				self.marioWaterLevel = self.lerpedPos.z + upVec.z * tr.FractionLeftSolid
+				if self.marioWaterLevel == self.lerpedPos.z then
+					self.marioWaterLevel = -1000000 / libsm64.ScaleFactor
+				end
 				libsm64.SetMarioWaterLevel(self.MarioId, self.marioWaterLevel * libsm64.ScaleFactor)
 			else
 				local tr = util.TraceLine({
@@ -1203,6 +1213,9 @@ if CLIENT then
 				
 				if tr.Hit == true and tr.Fraction < 1 then
 					self.marioWaterLevel = tr.HitPos.z
+					if self.marioWaterLevel == self.lerpedPos.z then
+						self.marioWaterLevel = -1000000 / libsm64.ScaleFactor
+					end
 					libsm64.SetMarioWaterLevel(self.MarioId, self.marioWaterLevel * libsm64.ScaleFactor)
 				else
 					self.marioWaterLevel = -1000000

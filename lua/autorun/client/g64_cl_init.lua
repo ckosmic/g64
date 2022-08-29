@@ -288,7 +288,8 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 					   v.DontCollideWithMario == true or 
 					   v == LocalPlayer():GetVehicle() or 
 					   (IsValid(mario) and mario.hasVanishCap == true) or
-					   v:IsSolid() == false then
+					   v:IsSolid() == false or
+					   (IsValid(mario) and mario.heldObj == v) then
 
 						libsm64.SurfaceObjectMove(surfaceId, noCollidePos, v:GetAngles())
 					else
@@ -455,18 +456,14 @@ net.Receive("G64_CHANGESURFACEINFO", function(len)
 	libsm64.AddColliderToQueue( ent )
 end)
 
-net.Receive("G64_SENDTRIGGERINFO", function(len)
-	table.Empty(g64utils.TeleportTriggers)
-	local numTriggers = net.ReadUInt(16)
-	for i=1, numTriggers do
-		local mins, maxs = net.ReadVector(), net.ReadVector()
-		local targetPos, targetAng = net.ReadVector(), net.ReadAngle()
-		table.insert(g64utils.TeleportTriggers, {
-			OBBMins = mins,
-			OBBMaxs = maxs,
-			TargetPos = targetPos,
-			TargetAng = targetAng
-		})
+net.Receive("G64_TELEPORTMARIO", function(len)
+	local mario = net.ReadEntity()
+	local pos = net.ReadVector()
+	local ang = net.ReadAngle()
+
+	if IsValid(mario) then
+		libsm64.SetMarioPosition(mario.MarioId, pos)
+		libsm64.SetMarioAngle(mario.MarioId, math.rad(ang[2]-90)/(math.pi*math.pi))
 	end
 end)
 
@@ -504,23 +501,37 @@ concommand.Add("g64_set_lives", function(ply, cmd, args)
 	end
 end)
 
---hook.Remove("HUDPaint", "G64_CL_THINK_DEBUG")
---hook.Add("OnContextMenuOpen", "G64_CTX_OPEN", function()
---	hook.Add("HUDPaint", "G64_CL_THINK_DEBUG", function()
---		local trTab = util.GetPlayerTrace(LocalPlayer())
---		local tr = util.TraceLine(trTab)
---		local tx, ty = input.GetCursorPos()
---		surface.SetFont( "Default" )
---		surface.SetTextColor( 255, 255, 255 )
---		surface.SetTextPos( tx + 30, ty + 30 ) 
---		surface.DrawText( tr.Entity:GetClass() )
---		surface.SetTextPos( tx + 30, ty + 40 ) 
---		surface.DrawText( tr.Entity:GetCollisionGroup() )
---		surface.SetTextPos( tx + 30, ty + 50 ) 
---		surface.DrawText( tostring(bit.band(FSOLID_NOT_SOLID, v:GetSolidFlags()) == FSOLID_NOT_SOLID) )
---	end)
---end)
---
---hook.Add("OnContextMenuClose", "G64_CTX_CLOSE", function()
---	hook.Remove("HUDPaint", "G64_CL_THINK_DEBUG")
+hook.Remove("HUDPaint", "G64_CL_THINK_DEBUG")
+hook.Add("OnContextMenuOpen", "G64_CTX_OPEN", function()
+	hook.Add("HUDPaint", "G64_CL_THINK_DEBUG", function()
+		local trTab = util.GetPlayerTrace(LocalPlayer())
+		local tr = util.TraceLine(trTab)
+		local tx, ty = input.GetCursorPos()
+		surface.SetFont( "Default" )
+		surface.SetTextColor( 255, 255, 255 )
+		surface.SetTextPos( tx + 30, ty + 30 ) 
+		surface.DrawText( tr.Entity:GetClass() )
+		surface.SetTextPos( tx + 30, ty + 40 ) 
+		surface.DrawText( tr.Entity:GetCollisionGroup() )
+		surface.SetTextPos( tx + 30, ty + 50 ) 
+		surface.DrawText( tostring(bit.band(FSOLID_NOT_SOLID, v:GetSolidFlags()) == FSOLID_NOT_SOLID) )
+	end)
+end)
+
+hook.Add("OnContextMenuClose", "G64_CTX_CLOSE", function()
+	hook.Remove("HUDPaint", "G64_CL_THINK_DEBUG")
+end)
+
+--local prevThing = 0
+--hook.Remove("Think", "G64_CL_THINK_DEBUG")
+--hook.Add("Think", "G64_CL_THINK_DEBUG", function()
+--	local automatic = GetConVar("dsp_automatic"):GetInt()
+--	if automatic != prevThing then
+--		print("dsp_automatic", GetConVar("dsp_automatic"):GetInt())
+--		print("dsp_db_mixdrop", GetConVar("dsp_db_mixdrop"):GetFloat())
+--		print("dsp_mix_max", GetConVar("dsp_mix_max"):GetFloat())
+--		print("dsp_mix_min", GetConVar("dsp_mix_min"):GetFloat())
+--		print("-------------------")
+--		prevThing = automatic
+--	end
 --end)
