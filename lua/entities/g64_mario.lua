@@ -1199,11 +1199,25 @@ if CLIENT then
 			})
 			
 			if tr.Hit == true then
-				self.marioWaterLevel = self.lerpedPos.z + upVec.z * tr.FractionLeftSolid
-				if self.marioWaterLevel == self.lerpedPos.z then
-					self.marioWaterLevel = -1000000 / libsm64.ScaleFactor
+				if tr.FractionLeftSolid == 0 then
+					-- Check for edge case where the water level might actually be at mario's pos
+					local tr = util.TraceLine({
+						start = self.lerpedPos + Vector(0,0,-1),
+						endpos = self.lerpedPos + Vector(0,0,-1) + upVec,
+						mask = MASK_WATER
+					})
+					if tr.Hit == true then
+						if tr.FractionLeftSolid == 0 then
+							self.marioWaterLevel = -1000000 / libsm64.ScaleFactor
+						else
+							self.marioWaterLevel = self.lerpedPos.z + upVec.z * tr.FractionLeftSolid
+							libsm64.SetMarioWaterLevel(self.MarioId, self.marioWaterLevel * libsm64.ScaleFactor)
+						end
+					end
+				else
+					self.marioWaterLevel = self.lerpedPos.z + upVec.z * tr.FractionLeftSolid
+					libsm64.SetMarioWaterLevel(self.MarioId, self.marioWaterLevel * libsm64.ScaleFactor)
 				end
-				libsm64.SetMarioWaterLevel(self.MarioId, self.marioWaterLevel * libsm64.ScaleFactor)
 			else
 				local tr = util.TraceLine({
 					start = self.lerpedPos,
