@@ -165,6 +165,7 @@ hook.Add("InitPostEntity", "G64_SV_INIT_POST_ENTITY", function()
 		tg:SetPos(v:GetPos())
 		tg:SetAngles(v:GetAngles())
 		
+		tg.OrigTrigger = v
 		if IsValid(tpTarget) then
 			tg.TargetPos = tpTarget:GetPos()
 			tg.TargetAng = tpTarget:GetAngles()

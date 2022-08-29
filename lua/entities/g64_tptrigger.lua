@@ -21,13 +21,26 @@ function ENT:Initialize()
     self:SetSolidFlags(bit.bor(FSOLID_TRIGGER, FSOLID_CUSTOMRAYTEST, FSOLID_CUSTOMBOXTEST, FSOLID_NOT_SOLID))
 end
 
+function ENT:Think()
+    if SERVER and (self.TargetPos == nil or self.TargetAng == nil) then
+        local keyValues = self.OrigTrigger:GetKeyValues()
+		local tpTarget = ents.FindByName(keyValues.target)[1]
+        if IsValid(tpTarget) then
+			self.TargetPos = tpTarget:GetPos()
+			self.TargetAng = tpTarget:GetAngles()
+		end
+    end
+end
+
 function ENT:StartTouch(ent)
     if IsValid(ent) and ent:IsPlayer() and ent.IsMario and IsValid(ent.MarioEnt) then
-        net.Start("G64_TELEPORTMARIO")
-            net.WriteEntity(ent.MarioEnt)
-            net.WriteVector(self.TargetPos)
-            net.WriteAngle(self.TargetAng)
-        net.Send(ent)
+        if self.TargetPos ~= nil and self.TargetAng ~= nil then
+            net.Start("G64_TELEPORTMARIO")
+                net.WriteEntity(ent.MarioEnt)
+                net.WriteVector(self.TargetPos)
+                net.WriteAngle(self.TargetAng)
+            net.Send(ent)
+        end
     end
 end
 function ENT:Touch(ent)
