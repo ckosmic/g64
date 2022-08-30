@@ -479,4 +479,3 @@ end
 drive.Register("G64_DRIVE",
 {
 }, "drive_base")
-

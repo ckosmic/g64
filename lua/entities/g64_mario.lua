@@ -81,6 +81,11 @@ function ENT:Initialize()
 	self.Owner.IsMario = true
 	self.Owner:SetModelScale(0.8, 0)
 	self.Owner.PreviousWeapon = self.Owner:GetActiveWeapon()
+
+	self:SetMoveType( MOVETYPE_NONE )
+	self:SetSolid( SOLID_BBOX )
+	self:SetCollisionBounds(Vector(-16, -16, -5), Vector(16, 16, 55))
+	self:SetCollisionGroup(COLLISION_GROUP_DEBRIS_TRIGGER)
 	
 	if CLIENT then
 		self:SetNoDraw(true)
@@ -183,7 +188,10 @@ function ENT:Initialize()
 	else
 		self:SetModel("models/hunter/misc/sphere075x075.mdl") -- Easiest circle shadow ever
 		self.Owner:SetMaxHealth(8)
+		self:PhysicsInit( SOLID_BBOX )
+		self:PhysWake()
 		if self.Owner:FlashlightIsOn() then self.Owner:Flashlight(false) end
+		self:StartServersideMario()
 	end
 	
 	self:SetAngles(Angle())
@@ -780,7 +788,8 @@ if CLIENT then
 			g64_1up = true
 		}
 		local pickUpBlacklist = {
-			
+			prop_static = true,
+			prop_dynamic = true
 		}
 		local function PerformGroundAttacks()
 			if self:MarioIsAttacking() then
@@ -826,7 +835,7 @@ if CLIENT then
 							self.pickupMode = false
 						end
 
-						print(volume)
+						--print(volume)
 						if volume < 65000 then
 							if self.holdingObject == false and IsValid(self.heldObject) == false then
 								libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_PICKING_UP)
@@ -962,6 +971,7 @@ if CLIENT then
 				if not ply:InVehicle() then
 					self.lerpedPos = LerpVector(t, stateBuffers[self.MarioId][self.bufferIndex + 1][1], stateBuffers[self.MarioId][1-self.bufferIndex + 1][1]) + upOffset
 					self:SetNetworkOrigin(self.lerpedPos)
+					self:SetNetworkAngles(Angle())
 					self:SetPos(self.lerpedPos)
 				end
 			end
@@ -1355,6 +1365,8 @@ if CLIENT then
 				if self.marioWaterLevel ~= nil then
 					render.DrawLine(Vector(self.lerpedPos[1],self.lerpedPos[2],self.marioWaterLevel), Vector(self.lerpedPos[1],self.lerpedPos[2],self.marioWaterLevel+100), Color(255,0,0))
 				end
+				local mins, maxs = self:GetCollisionBounds()
+				render.DrawWireframeBox(self:GetPos(), self:GetAngles(), mins, maxs, Color(200,0,0), true)
 			end
 			
 		end)
@@ -1467,7 +1479,15 @@ if CLIENT then
 
 else
 
-	
+	function ENT:StartServersideMario()
+		local phys = self:GetPhysicsObject() 
+		hook.Add("Think", "G64_SV_MARIO_THINK", function()
+			if phys:IsValid() then
+				phys:SetVelocityInstantaneous(Vector())
+				phys:SetAngleVelocity(Vector())
+			end
+		end)
+	end
 
 end
 

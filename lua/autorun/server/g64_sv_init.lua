@@ -165,7 +165,10 @@ hook.Add("InitPostEntity", "G64_SV_INIT_POST_ENTITY", function()
 		tg:SetPos(v:GetPos())
 		tg:SetAngles(v:GetAngles())
 		
+		v.G64TPTrigger = tg
 		tg.OrigTrigger = v
+		tg.Enabled = true
+		if keyValues.StartDisabled == 1 then tg.Enabled = false end
 		if IsValid(tpTarget) then
 			tg.TargetPos = tpTarget:GetPos()
 			tg.TargetAng = tpTarget:GetAngles()
@@ -276,6 +279,17 @@ hook.Add("SetupMove", "G64_SETUP_MOVE", function(ply, mv, cmd)
 
 	if mv:KeyPressed(IN_USE) and ply:InVehicle() then
 		ply:ExitVehicle()
+	end
+end)
+
+hook.Add("AcceptInput", "skskjsgsdg", function(ent, inp, activator, caller, value)
+	if ent:GetClass() == "trigger_teleport" and IsValid(ent.G64TPTrigger) then
+		if inp == "Enable" then
+			ent.G64TPTrigger.Enabled = true
+		elseif inp == "Disable" then
+			ent.G64TPTrigger.Enabled = false
+		end
+		--print(ent, inp, activator, caller, value)
 	end
 end)
 
