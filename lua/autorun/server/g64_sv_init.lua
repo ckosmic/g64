@@ -282,7 +282,7 @@ hook.Add("SetupMove", "G64_SETUP_MOVE", function(ply, mv, cmd)
 	end
 end)
 
-hook.Add("AcceptInput", "skskjsgsdg", function(ent, inp, activator, caller, value)
+hook.Add("AcceptInput", "G64_ACCEPT_INPUT", function(ent, inp, activator, caller, value)
 	if ent:GetClass() == "trigger_teleport" and IsValid(ent.G64TPTrigger) then
 		if inp == "Enable" then
 			ent.G64TPTrigger.Enabled = true
@@ -412,30 +412,28 @@ net.Receive("G64_COLLECTEDCOIN", function(len, ply)
 end)
 
 net.Receive("G64_UPDATEHELDOBJECT", function(len, ply)
-	if ply.IsMario == true then
-		local ent = net.ReadEntity()
-		local pos = net.ReadVector()
-		local ang = net.ReadAngle()
-		local arg = net.ReadUInt(8)
-		if IsValid(ent) then
-			if arg < 2 then
-				ent:SetNotSolid(false)
-				local phys = ent:GetPhysicsObject()
-				if IsValid(phys) then
-					phys:EnableMotion(true)
-					phys:Wake()
-					if arg == 1 then
-						phys:SetVelocity(ang:Forward()*200 + Vector(0,0,200))
-					end
+	local ent = net.ReadEntity()
+	local pos = net.ReadVector()
+	local ang = net.ReadAngle()
+	local arg = net.ReadUInt(8)
+	if IsValid(ent) then
+		if arg < 2 then
+			ent:SetNotSolid(false)
+			local phys = ent:GetPhysicsObject()
+			if IsValid(phys) then
+				phys:EnableMotion(true)
+				phys:Wake()
+				if arg == 1 then
+					phys:SetVelocity(ang:Forward()*200 + Vector(0,0,200))
 				end
-			else
-				ent:SetPos(pos)
-				ent:SetAngles(ang)
-				ent:SetNotSolid(true)
-				local phys = ent:GetPhysicsObject()
-				if IsValid(phys) then
-					phys:EnableMotion(false)
-				end
+			end
+		else
+			ent:SetPos(pos)
+			ent:SetAngles(ang)
+			ent:SetNotSolid(true)
+			local phys = ent:GetPhysicsObject()
+			if IsValid(phys) then
+				phys:EnableMotion(false)
 			end
 		end
 	end

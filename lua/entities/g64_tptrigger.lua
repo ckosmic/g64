@@ -5,9 +5,8 @@ ENT.Base = "base_entity"
 
 ENT.PrintName = "Teleport Trigger"
 ENT.Author = "ckosmic"
-ENT.Spawnable = true
-ENT.AdminSpawnable = true
-ENT.Category = "G64"
+ENT.Spawnable = false
+ENT.AdminSpawnable = false
 
 function ENT:Initialize()
     self:PhysicsFromMesh(self.PhysMesh)

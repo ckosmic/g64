@@ -314,6 +314,10 @@ if CLIENT then
             end
         end
     end
+
+    g64utils.FacingToForward = function(facing)
+        return Vector(math.sin(facing), math.cos(math.pi*2 - facing), 0)
+    end
 end
 
 hook.Call("G64UtilsInitialized")

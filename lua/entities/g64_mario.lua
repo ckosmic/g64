@@ -236,6 +236,18 @@ function ENT:OnRemove()
 					self.cameraOverride:SetNoDraw(false)
 				end
 
+				print(IsValid(self.heldObject))
+				if IsValid(self.heldObject) then
+					net.Start("G64_UPDATEHELDOBJECT")
+						net.WriteEntity(self.heldObject)
+						net.WriteVector(self.marioCenter)
+						net.WriteAngle(self.lerpedForward:Angle())
+						net.WriteUInt(0, 8)
+					net.SendToServer()
+					self.heldObject = nil
+					self.pickupMode = false
+				end
+
 				self.MarioId = -10
 				if self.Owner ~= nil && IsValid(self.Owner) then -- Is null if local player disconnects
 					self.Owner:SetNoDraw(false)
@@ -389,6 +401,7 @@ if CLIENT then
 		self.marioNumLives = 4
 		self.bufferIndex = 0
 		self.lerpedPos = Vector()
+		self.lerpedForward = Vector()
 		self.animInfo = {}
 		self.tickTime = -1
 		self.wingsIndices = {}
@@ -969,7 +982,14 @@ if CLIENT then
 			local t = (SysTime() - fixedTime) / G64_TICKRATE
 			if stateBuffers[self.MarioId][self.bufferIndex + 1][1] ~= nil then
 				if not ply:InVehicle() then
-					self.lerpedPos = LerpVector(t, stateBuffers[self.MarioId][self.bufferIndex + 1][1], stateBuffers[self.MarioId][1-self.bufferIndex + 1][1]) + upOffset
+					local curState = stateBuffers[self.MarioId][self.bufferIndex + 1]
+					local prevState = stateBuffers[self.MarioId][1-self.bufferIndex + 1]
+					self.lerpedPos = LerpVector(t, curState[1], prevState[1]) + upOffset
+					if GetConVar("g64_interpolation"):GetBool() == true then
+						self.lerpedForward = LerpVector(t, g64utils.FacingToForward(curState[3]), g64utils.FacingToForward(prevState[3]))
+					else
+						self.lerpedForward = g64utils.FacingToForward(curState[3])
+					end
 					self:SetNetworkOrigin(self.lerpedPos)
 					self:SetNetworkAngles(Angle())
 					self:SetPos(self.lerpedPos)
@@ -1048,7 +1068,8 @@ if CLIENT then
 				if IsValid(self.heldObject) then
 					local mins, maxs = self.heldObject:GetRenderBounds()
 
-					local heldPos = self.lerpedPos + self.marioForward * ((maxs.x - mins.x)/2+10)
+					local t = (SysTime() - fixedTime) / G64_TICKRATE
+					local heldPos = self.lerpedPos + self.lerpedForward * ((maxs.x - mins.x)/2+10)
 					heldPos.z = heldPos.z + (maxs.z - mins.z)/4
 					
 					if self.holdingObject == true then
@@ -1056,7 +1077,7 @@ if CLIENT then
 						net.Start("G64_UPDATEHELDOBJECT")
 							net.WriteEntity(self.heldObject)
 							net.WriteVector(heldPos)
-							net.WriteAngle(self.marioForward:Angle())
+							net.WriteAngle(self.lerpedForward:Angle())
 							net.WriteUInt(2, 8)
 						net.SendToServer()
 						self.heldObject:SetNetworkOrigin(heldPos)
@@ -1065,7 +1086,7 @@ if CLIENT then
 						net.Start("G64_UPDATEHELDOBJECT")
 							net.WriteEntity(self.heldObject)
 							net.WriteVector(heldPos)
-							net.WriteAngle(self.marioForward:Angle())
+							net.WriteAngle(self.lerpedForward:Angle())
 							net.WriteUInt(self.dropMethod, 8)
 						net.SendToServer()
 						self.heldObject = nil
@@ -1149,7 +1170,7 @@ if CLIENT then
 			local marioState = stateBuffers[self.MarioId][self.bufferIndex + 1]
 			
 			if not lPlayer:InVehicle() then self.marioPos = marioState[1] end
-			self.marioForward = Vector(math.sin(marioState[3]), math.cos(math.pi*2 - marioState[3]), 0)
+			self.marioForward = g64utils.FacingToForward(marioState[3])
 			self.marioFlags = marioState[6]
 			self.marioParticleFlags = marioState[7]
 			self.marioHealth = bit.rshift(marioState[4], 8)
@@ -1305,7 +1326,7 @@ if CLIENT then
 		end
 
 		net.Receive("G64_DAMAGEMARIO", function(len,ply)
-			if self.marioInvincTimer < 3 then
+			if self.marioInvincTimer and self.marioInvincTimer < 3 then
 				if self.Owner:InVehicle() and not self.hasMetalCap and not self.hasVanishCap then
 					libsm64.SetMarioInvincibility(self.MarioId, 30)
 				end
