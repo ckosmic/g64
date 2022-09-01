@@ -236,7 +236,6 @@ function ENT:OnRemove()
 					self.cameraOverride:SetNoDraw(false)
 				end
 
-				print(IsValid(self.heldObject))
 				if IsValid(self.heldObject) then
 					net.Start("G64_UPDATEHELDOBJECT")
 						net.WriteEntity(self.heldObject)
@@ -1187,7 +1186,9 @@ if CLIENT then
 			self.holdingObject = marioState[11]
 			self.dropMethod = marioState[12]
 
-			lPlayer.LivesCount = self.marioNumLives
+			if self.marioHealth > 0 then
+				lPlayer.LivesCount = self.marioNumLives
+			end
 			
 			
 			LoadStaticSurfaces()
