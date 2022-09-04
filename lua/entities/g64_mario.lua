@@ -390,6 +390,7 @@ if CLIENT then
 		xOffset = worldMin.x + 16384
 		yOffset = worldMin.y + 16384
 		self.marioPos = Vector()
+		self.marioVelocity = Vector()
 		self.marioCenter = Vector()
 		self.marioForward = Vector()
 		self.marioAction = 0
@@ -1134,11 +1135,13 @@ if CLIENT then
 
 		local function ParticleTick()
 			local waterLvlDiff = self.marioWaterLevel - self.lerpedPos.z
+			local marioVel = self.marioVelocity:LengthSqr()/10
 
-			if self.bubbleEmitter and 
-			math.fmod(tickCount, math.random(20, 10)) == 0 and 
-			waterLvlDiff > 0 then
-				local part = self.bubbleEmitter:Add(g64utils.BubbleMat, self.marioCenter + self.marioForward * 10)
+			local sel_norm = math.fmod(tickCount, math.random(10, 20)) == 0
+			local sel_vel = math.fmod(tickCount, math.ceil(math.random(40, 50) / marioVel)) == 0
+
+			if self.bubbleEmitter and (sel_norm or sel_vel) and waterLvlDiff > 0 then
+				local part = self.bubbleEmitter:Add(g64utils.BubbleMat, self.marioCenter + self.marioForward * 10 + VectorRand() * 15)
 				
 				if part then
 					part:SetDieTime(3)
@@ -1146,7 +1149,10 @@ if CLIENT then
 					part:SetStartAlpha(255)
 					part:SetEndAlpha(255)
 
-					local size = math.random(10, 1)
+					local size = math.random(1, 10)
+					if sel_vel == true then
+						size = math.random(1, 3)
+					end
 					part:SetStartSize(size)
 					part:SetEndSize(size)
 
@@ -1221,6 +1227,7 @@ if CLIENT then
 			local marioState = stateBuffers[self.MarioId][self.bufferIndex + 1]
 			
 			if not lPlayer:InVehicle() then self.marioPos = marioState[1] end
+			self.marioVelocity = marioState[2]
 			self.marioForward = g64utils.FacingToForward(marioState[3])
 			self.marioFlags = marioState[6]
 			self.marioParticleFlags = marioState[7]
