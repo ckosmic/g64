@@ -204,7 +204,7 @@ hook.Add("EntityRemoved", "G64_ENTITY_REMOVED", function(ent)
 end)
 
 local useBlacklist = {
-	
+	g64_physbox = true
 }
 hook.Add("PlayerUse", "G64_PLAYER_USE", function(ply, ent)
 	if IsValid(ply.MarioEnt) and ply.IsMario == true and useBlacklist[ent:GetClass()] and ply:Health() > 0 then return false end
@@ -290,6 +290,16 @@ hook.Add("AcceptInput", "G64_ACCEPT_INPUT", function(ent, inp, activator, caller
 			ent.G64TPTrigger.Enabled = false
 		end
 		--print(ent, inp, activator, caller, value)
+	end
+end)
+
+local physgunBlacklist = {
+	g64_physbox = true,
+	g64_mario = true
+}
+hook.Add("PhysgunPickup", "G64_PHYSGUN_PICKUP", function(ply, ent)
+	if physgunBlacklist[ent:GetClass()] then
+		return false
 	end
 end)
 

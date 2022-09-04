@@ -81,11 +81,6 @@ function ENT:Initialize()
 	self.Owner.IsMario = true
 	self.Owner:SetModelScale(0.8, 0)
 	self.Owner.PreviousWeapon = self.Owner:GetActiveWeapon()
-
-	self:SetMoveType( MOVETYPE_NONE )
-	self:SetSolid( SOLID_BBOX )
-	self:SetCollisionBounds(Vector(-16, -16, -5), Vector(16, 16, 55))
-	self:SetCollisionGroup(COLLISION_GROUP_DEBRIS_TRIGGER)
 	
 	if CLIENT then
 		self:SetNoDraw(true)
@@ -188,8 +183,6 @@ function ENT:Initialize()
 	else
 		self:SetModel("models/hunter/misc/sphere075x075.mdl") -- Easiest circle shadow ever
 		self.Owner:SetMaxHealth(8)
-		self:PhysicsInit( SOLID_BBOX )
-		self:PhysWake()
 		if self.Owner:FlashlightIsOn() then self.Owner:Flashlight(false) end
 		self:StartServersideMario()
 	end
@@ -231,6 +224,11 @@ function ENT:OnRemove()
 				hook.Remove("StartCommand", "G64_START_COMMAND" .. self.MarioId)
 
 				timer.Remove("G64_RESPAWN_TIMER" .. self.MarioId)
+
+				if self.bubbleEmitter then
+					self.bubbleEmitter:Finish()
+					self.bubbleEmitter = nil
+				end
 				
 				if IsValid(self.cameraOverride) then
 					self.cameraOverride:SetNoDraw(false)
@@ -257,6 +255,7 @@ function ENT:OnRemove()
 			end
 		else
 			timer.Remove("G64_DELAY_WEAPON_SWITCH" .. self.MarioId)
+			hook.Remove("Think", "G64_SV_MARIO_THINK" .. self.MarioId)
 			if not IsValid(self.Owner) then return end
 			self.Owner:SetObserverMode(OBS_MODE_NONE)
 			self.Owner:SetMaxHealth(self.OwnerMaxHealth)
@@ -268,6 +267,9 @@ function ENT:OnRemove()
 				-- Workaround for weapon becoming invisible and unusable
 				self.Owner:SelectWeapon("weapon_crowbar")
 				self.Owner:SelectWeapon(self.Owner.PreviousWeapon:GetClass())
+			end
+			if IsValid(self.PhysBox) then
+				self.PhysBox:Remove()
 			end
 			self.Owner:SetMoveType(MOVETYPE_WALK)
 		end
@@ -414,6 +416,7 @@ if CLIENT then
 		self.waitForHold = false
 		self.pickupMode = false
 		self.dropMethod = -1
+		self.bubbleEmitter = ParticleEmitter(self:GetPos())
 		self.view = {
 			origin = Vector(),
 			angles = Angle(),
@@ -461,6 +464,9 @@ if CLIENT then
 		local wingIndex = 1
 		local uvOffset = 2/704
 		local hasWingCap = self.hasWingCap
+
+		--local vertOffset = self:GetPos() - self.lerpedPos
+		--vertOffset.z = vertOffset.z + 50 / libsm64.ScaleFactor
 
 		-- Create main mesh
 		mesh.Begin(self.Mesh, MATERIAL_TRIANGLES, triCount)
@@ -628,6 +634,9 @@ if CLIENT then
 			vertexBuffers[self.MarioId][2] = libsm64.GetMarioTableReference(self.MarioId, 5)
 			
 			self:SetNoDraw(false)
+
+			local phys = self:GetPhysicsObject()
+			print(phys:IsValid())
 			
 			net.Start("G64_REQUESTCOLORS", false)
 				net.WriteEntity(self.Owner)
@@ -673,6 +682,7 @@ if CLIENT then
 		end
 		
 		hook.Add("G64GameTick", "G64_MARIO_TICK" .. self.MarioId, function()
+			if self.tickTime == nil then return end
 			if self.tickTime and self.tickTime < 0 then return end
 			tickDeltaTime = SysTime() - self.tickTime
 			-- If hasn't received any update in > 1.5s, don't tick and don't draw
@@ -704,8 +714,8 @@ if CLIENT then
 		sent.animInfo.rotation = Angle(net.ReadInt(16), net.ReadInt(16), net.ReadInt(16))
 		sent.marioFlags = net.ReadUInt(32)
 		
-		libsm64.SetMarioPosition(sent.MarioId, sent:GetPos())
-		sent.tickedPos = -sent:GetPos()*libsm64.ScaleFactor
+		libsm64.SetMarioPosition(sent.MarioId, sent.Owner:GetPos())
+		sent.tickedPos = -sent.Owner:GetPos()*libsm64.ScaleFactor
 		
 		sent.tickTime = SysTime()
 	end)
@@ -782,7 +792,7 @@ if CLIENT then
 					local tr = util.TraceLine({
 						start = self.marioCenter,
 						endpos = self.marioCenter + self.marioForward * (140 / libsm64.ScaleFactor),
-						filter = { self, lPlayer },
+						filter = { self, lPlayer, self.PhysBox },
 					})
 					local ang = tr.HitNormal:Angle()
 					ParticleEffect("mario_vert_star", tr.HitPos, ang)
@@ -801,18 +811,21 @@ if CLIENT then
 		}
 		local pickUpBlacklist = {
 			prop_static = true,
-			prop_dynamic = true
+			prop_dynamic = true,
+			g64_physbox = true,
+			g64_mario = true
 		}
 		local function PerformGroundAttacks()
 			if self:MarioIsAttacking() then
 				local tr = util.TraceHull({
 					start = self.marioCenter,
 					endpos = self.marioCenter + self.marioForward * (90 / libsm64.ScaleFactor),
-					filter = { self, lPlayer },
+					filter = function(ent) return (ent ~= self and ent ~= lPlayer and ent:GetClass() ~= "g64_physbox") end,
 					mins = Vector(-16, -16, -(40 / libsm64.ScaleFactor)),
 					maxs = Vector(16, 16, 71),
 					mask = MASK_SHOT_HULL
 				})
+				
 				hitPos = tr.HitPos
 				if IsValid(tr.Entity) and tr.Hit and tr.Entity.HitStunTimer ~= nil and tr.Entity.HitStunTimer < 0 and not dontAttack[tr.Entity:GetClass()] then
 					local min, max = tr.Entity:WorldSpaceAABB()
@@ -876,7 +889,7 @@ if CLIENT then
 			local tr = util.TraceHull({
 				start = self.marioCenter,
 				endpos = self.marioCenter + trDownVec,
-				filter = function(ent) return (ent ~= self.Owner and ent:Health() > 0) end,
+				filter = function(ent) return (ent ~= self.Owner and ent:Health() > 0 and ent ~= self.PhysBox) end,
 				mins = trMins,
 				maxs = trMaxs,
 				mask = MASK_SHOT_HULL
@@ -920,7 +933,7 @@ if CLIENT then
 				tr = util.TraceLine({
 					start = self.marioCenter,
 					endpos = self.marioCenter + trDownVec,
-					filter = { self, lPlayer },
+					filter = { self, lPlayer, self.PhysBox },
 					mask = MASK_SOLID
 				})
 
@@ -1001,6 +1014,7 @@ if CLIENT then
 
 			entFilter[1] = self
 			entFilter[2] = ply
+			entFilter[3] = self.PhysBox
 
 			CalcView_ThirdPerson(self.view, 500, 4, ply, entFilter)
 			return self.view
@@ -1117,6 +1131,44 @@ if CLIENT then
 			--	libsm64.SetGlobalReverb(0x3f)
 			--end
 		end
+
+		local function ParticleTick()
+			local waterLvlDiff = self.marioWaterLevel - self.lerpedPos.z
+
+			if self.bubbleEmitter and 
+			math.fmod(tickCount, math.random(20, 10)) == 0 and 
+			waterLvlDiff > 0 then
+				local part = self.bubbleEmitter:Add(g64utils.BubbleMat, self.marioCenter + self.marioForward * 10)
+				
+				if part then
+					part:SetDieTime(3)
+
+					part:SetStartAlpha(255)
+					part:SetEndAlpha(255)
+
+					local size = math.random(10, 1)
+					part:SetStartSize(size)
+					part:SetEndSize(size)
+
+					part:SetGravity(Vector( 0, 0, 250 ))
+					part:SetVelocity(VectorRand() * 50)
+
+					part:SetNextThink(CurTime())
+					part:SetThinkFunction(function(pa)
+						local vel = VectorRand() * 300
+						vel.z = math.random(200, 100)
+						if not self.lerpedPos then
+							pa:SetDieTime(0)
+							return
+						end
+						waterLvlDiff = self.marioWaterLevel - self.lerpedPos.z
+						pa:SetVelocity(vel)
+						pa:SetNextThink(CurTime())
+						pa:SetDieTime(math.min(waterLvlDiff, 200.0)/200.0)
+					end)
+				end
+			end
+		end
 		
 		local hitPos = Vector()
 		local animInfo
@@ -1127,7 +1179,7 @@ if CLIENT then
 			if self.MarioId == nil then return end
 			fixedTime = SysTime()
 
-			if g64utils.IsSpawnMenuOpen() == false and g64utils.IsChatOpen == false then
+			if g64utils.IsSpawnMenuOpen() == false and g64utils.IsChatOpen == false and gui.IsGameUIVisible() == false then
 				inputs = g64utils.GetInputTable()
 				if input.IsButtonDown(GetConVar("g64_freemove"):GetInt()) == true then
 					if vDown == false and GetConVar("sv_cheats"):GetBool() then
@@ -1198,6 +1250,7 @@ if CLIENT then
 			CheckForSpecialCaps()
 			CheckIfDead()
 			CheckForCamera()
+			ParticleTick()
 			--SetReverb()
 			
 			self.bufferIndex = 1 - self.bufferIndex
@@ -1319,6 +1372,10 @@ if CLIENT then
 				self:GenerateMesh()
 			end
 
+			if not IsValid(self.PhysBox) and IsValid(self:GetNWEntity("PhysBox")) then
+				self.PhysBox = self:GetNWEntity("PhysBox")
+			end
+
 			VehicleTick()
 			UpdateHeldObject()
 
@@ -1375,7 +1432,7 @@ if CLIENT then
 					local tr = util.TraceHull({
 						start = self.marioCenter,
 						endpos = self.marioCenter + self.marioForward * (90 / libsm64.ScaleFactor),
-						filter = { self, lPlayer },
+						filter = { self, lPlayer, self.PhysBox },
 						mins = Vector(-16, -16, -(40 / libsm64.ScaleFactor)),
 						maxs = Vector(16, 16, 71),
 						mask = MASK_SHOT_HULL
@@ -1502,11 +1559,14 @@ if CLIENT then
 else
 
 	function ENT:StartServersideMario()
-		local phys = self:GetPhysicsObject() 
-		hook.Add("Think", "G64_SV_MARIO_THINK", function()
-			if phys:IsValid() then
-				phys:SetVelocityInstantaneous(Vector())
-				phys:SetAngleVelocity(Vector())
+		hook.Add("Think", "G64_SV_MARIO_THINK" .. self.MarioId, function()
+			if not IsValid(self.PhysBox) then
+				self.PhysBox = ents.Create("g64_physbox")
+				self.PhysBox.Mario = self
+				self.PhysBox:Spawn()
+				self.PhysBox:SetNWEntity("Mario", self)
+				self:SetNWEntity("PhysBox", self.PhysBox)
+				hook.Remove("Think", "G64_SV_MARIO_THINK" .. self.MarioId)
 			end
 		end)
 	end

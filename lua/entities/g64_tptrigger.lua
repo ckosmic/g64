@@ -39,13 +39,13 @@ function ENT:StartTouch(ent)
 end
 
 function ENT:Touch(ent)
-    if ent:GetClass() == "g64_mario" and IsValid(ent.Owner) and self.Enabled == true then
+    if ent:GetClass() == "g64_physbox" and IsValid(ent.Mario) and IsValid(ent.Mario.Owner) and self.Enabled == true then
         if self.TargetPos ~= nil and self.TargetAng ~= nil then
             net.Start("G64_TELEPORTMARIO")
-                net.WriteEntity(ent)
+                net.WriteEntity(ent.Mario)
                 net.WriteVector(self.TargetPos)
                 net.WriteAngle(self.TargetAng)
-            net.Send(ent.Owner)
+            net.Send(ent.Mario.Owner)
         end
     end
 end

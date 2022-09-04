@@ -73,6 +73,18 @@ if CLIENT then
         ["$vertexcolor"] = "1"
     })
 
+    g64utils.ParticleRT = GetRenderTargetEx("Particle_Texture", 256, 32, RT_SIZE_OFFSCREEN, MATERIAL_RT_DEPTH_NONE, bit.bor(1, 4, 8), 0, IMAGE_FORMAT_RGBA8888)
+    g64utils.ParticleMat = CreateMaterial("g64/libsm64_particle", "UnlitGeneric", {
+        ["$basetexture"] = g64utils.ParticleRT:GetName(),
+        ["$vertexalpha"] = "1",
+        ["$vertexcolor"] = "1"
+    })
+    g64utils.BubbleMat = CreateMaterial("g64/libsm64_bubble", "UnlitGeneric", {
+        ["$basetexture"] = g64utils.ParticleRT:GetName(),
+        ["$vertexalpha"] = "1",
+        ["$vertexcolor"] = "1"
+    })
+
     -- A mask of just Marios
     g64utils.MarioTargetRT = GetRenderTarget("G64_MARIO_TARGET", ScrW(), ScrH())
     g64utils.MarioTargetMat = CreateMaterial("g64/libsm64_mario_target", "UnlitGeneric", {
@@ -125,7 +137,7 @@ if CLIENT then
         g64utils.IsChatOpen = false
     end)
     --hook.Add("HUDPaint", "G64_PDPFDPFPDF", function()
-    --    local rt = g64utils.HealthRT
+    --    local rt = g64utils.ParticleRT
     --    render.DrawTextureToScreenRect(rt, 0, 0, rt:Width(), rt:Height())
     --end)
 
@@ -301,7 +313,11 @@ if CLIENT then
         end
 
         if not libsm64.IsGlobalInit() then
-            local textureData, coinTextureData, uiTextureData, healthTextureData = libsm64.GlobalInit(romPath)
+            local textureData, 
+            coinTextureData, 
+            uiTextureData, 
+            healthTextureData,
+            particleTextureData = libsm64.GlobalInit(romPath)
             if textureData == false then
                 chat.AddText(Color(255, 100, 100), "[G64] Error loading ROM at `", romPath, "`. Please check if the file exists.")
                 return false
@@ -310,6 +326,10 @@ if CLIENT then
                 g64utils.CreateTexture(coinTextureData, g64utils.CoinRT, 128)
                 g64utils.CreateTexture(uiTextureData, g64utils.UIRT, 224)
                 g64utils.CreateTexture(healthTextureData, g64utils.HealthRT, 704)
+                g64utils.CreateTexture(particleTextureData, g64utils.ParticleRT, 32)
+                local matrix = Matrix()
+                matrix:Scale(Vector(0.125, 1, 1))
+                g64utils.BubbleMat:SetMatrix("$basetexturetransform", matrix)
                 return true
             end
         end
