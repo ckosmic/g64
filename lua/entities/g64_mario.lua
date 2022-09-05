@@ -9,17 +9,20 @@ include("includes/g64_utils.lua")
 ENT.Type = "anim"
 ENT.Base = "base_entity"
 
+ENT.Category = "G64"
 ENT.PrintName = "Mario"
 ENT.Author = "ckosmic"
-ENT.Spawnable = true
-ENT.AdminSpawnable = false
-ENT.Category = "G64"
+ENT.Spawnable = false
+ENT.AdminSpawnable = true
+ENT.AdminOnly = false
 ENT.RenderGroup = RENDERGROUP_BOTH
 
 ENT.MarioId = -10
 ENT.Mins = Vector(-64, -64, -64)
 ENT.Maxs = Vector( 64,  64,  64)
 ENT.Invalid = false
+
+RegisterG64Entity(ENT, "g64_mario")
 
 -- Would be nice if I didn't have to do this
 function ENT:RemoveFromClient()

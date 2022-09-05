@@ -558,7 +558,7 @@ spawnmenu.AddContentType("g64_entity", function(container, data)
 	icon:SetColor(Color(0, 0, 0, 255))
 	
 	icon.DoClick = function()
-		RunConsoleCommand("gm_spawnsent", data.spawnname)
+		RunConsoleCommand("g64_spawnsent", data.spawnname)
 		surface.PlaySound("ui/buttonclickrelease.wav")
 	end
 	

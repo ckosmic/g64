@@ -6,6 +6,7 @@ include("includes/g64_config.lua")
 local spawnMarioOnceInited = false
 local inited = false
 hook.Add("InitPostEntity", "G64_CL_INIT_POST_ENTITY", function()
+	
 	hook.Add("Think", "G64_STEAMID_WAIT_NOTNIL", function()
 		local marios = ents.FindByClass("g64_mario")
 		for k,v in ipairs(marios) do

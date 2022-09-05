@@ -3,14 +3,17 @@ AddCSLuaFile()
 ENT.Type = "anim"
 ENT.Base = "base_entity"
 
+ENT.Category = "G64"
 ENT.PrintName = "Red Coin"
 ENT.Author = "ckosmic"
-ENT.Spawnable = true
-ENT.AdminSpawnable = false
-ENT.Category = "G64"
+ENT.Spawnable = false
+ENT.AdminSpawnable = true
+ENT.AdminOnly = false
 
 ENT.CoinColor = Color(255, 0, 0)
 ENT.CoinValue = 2
+
+RegisterG64Entity(ENT, "g64_redcoin")
 
 include("entities/g64_coin.lua")
 include("includes/g64_utils.lua")

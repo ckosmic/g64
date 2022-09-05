@@ -4,12 +4,15 @@ include("includes/g64_sprites.lua")
 ENT.Type = "anim"
 ENT.Base = "base_entity"
 
+ENT.Category = "G64"
 ENT.PrintName = "1-Up"
 ENT.Author = "ckosmic"
-ENT.Spawnable = true
-ENT.AdminSpawnable = false
-ENT.Category = "G64"
+ENT.Spawnable = false
+ENT.AdminSpawnable = true
+ENT.AdminOnly = false
 ENT.RenderGroup = RENDERGROUP_TRANSLUCENT
+
+RegisterG64Entity(ENT, "g64_1up")
 
 function ENT:SpawnFunction(ply, tr, ClassName)
 	if not tr.Hit then return end

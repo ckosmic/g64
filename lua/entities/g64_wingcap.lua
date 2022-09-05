@@ -3,11 +3,14 @@ AddCSLuaFile()
 ENT.Type = "anim"
 ENT.Base = "base_entity"
 
+ENT.Category = "G64"
 ENT.PrintName = "Wing Cap"
 ENT.Author = "ckosmic"
-ENT.Spawnable = true
-ENT.AdminSpawnable = false
-ENT.Category = "G64"
+ENT.Spawnable = false
+ENT.AdminSpawnable = true
+ENT.AdminOnly = false
+
+RegisterG64Entity(ENT, "g64_wingcap")
 
 function ENT:SpawnFunction(ply, tr, ClassName)
 	if not tr.Hit then return end
