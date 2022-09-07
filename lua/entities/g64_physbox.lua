@@ -42,6 +42,7 @@ function ENT:Think()
         else
             self:SetNetworkOrigin(self.Mario:GetPos())
         end
+        self.Mario.PhysBox = self
     end
 end
 

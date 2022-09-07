@@ -1039,6 +1039,7 @@ if CLIENT then
 				table.Empty(entFilter)
 				entFilter[1] = self
 				entFilter[2] = self.Owner
+				entFilter[3] = self.PhysBox
 			end
 		end
 
