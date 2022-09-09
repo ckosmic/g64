@@ -1186,7 +1186,7 @@ if CLIENT then
 			if self.MarioId == nil then return end
 			fixedTime = SysTime()
 
-			if g64utils.IsSpawnMenuOpen() == false and g64utils.IsChatOpen == false and gui.IsGameUIVisible() == false then
+			if self.canInput then
 				inputs = g64utils.GetInputTable()
 				if input.IsButtonDown(GetConVar("g64_freemove"):GetInt()) == true then
 					if vDown == false and GetConVar("sv_cheats"):GetBool() then
@@ -1372,7 +1372,9 @@ if CLIENT then
 		function self:Think()
 			if FrameTime() == 0 then return end
 
-			if input.IsButtonDown(GetConVar("g64_remove"):GetInt()) then
+			self.canInput = g64utils.IsSpawnMenuOpen() == false and g64utils.IsChatOpen == false and gui.IsGameUIVisible() == false
+
+			if self.canInput and input.IsButtonDown(GetConVar("g64_remove"):GetInt()) then
 				self:RemoveFromClient()
 			end
 
