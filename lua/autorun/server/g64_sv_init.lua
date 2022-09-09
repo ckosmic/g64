@@ -293,6 +293,33 @@ hook.Add("AcceptInput", "G64_ACCEPT_INPUT", function(ent, inp, activator, caller
 	end
 end)
 
+local allEnts = ents.GetAll()
+hook.Add("OnEntityCreated", "G64_SV_ON_ENT_CREATED", function(ent)
+	if IsValid(ent) == false then return end
+	table.insert(allEnts, ent)
+end)
+
+local markedForDeletion = {}
+hook.Add("Tick", "G64_SV_TICK", function()
+	table.Empty(markedForDeletion)
+	for k,v in ipairs(allEnts) do
+		if IsValid(v) == false then
+			table.insert(markedForDeletion, k)
+			continue
+		end
+		local kv = v:GetKeyValues()
+		if kv.Solidity ~= nil then
+			v:SetNWInt("Solidity", kv.Solidity)
+		else
+			v:SetNWInt("Solidity", -1)
+		end
+	end
+
+	for k,v in ipairs(markedForDeletion) do
+		table.remove(allEnts, v)
+	end
+end)
+
 local physgunBlacklist = {
 	g64_physbox = true,
 	g64_mario = true

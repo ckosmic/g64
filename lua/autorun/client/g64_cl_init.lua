@@ -290,6 +290,7 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 					   v == LocalPlayer():GetVehicle() or 
 					   (IsValid(mario) and mario.hasVanishCap == true) or
 					   v:IsSolid() == false or
+					   v:GetNWInt("Solidity") == 0 or
 					   (IsValid(mario) and mario.heldObj == v) then
 
 						libsm64.SurfaceObjectMove(surfaceId, noCollidePos, v:GetAngles())

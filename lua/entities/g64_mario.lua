@@ -813,11 +813,8 @@ if CLIENT then
 			g64_bluecoin = true,
 			g64_1up = true
 		}
-		local pickUpBlacklist = {
-			prop_static = true,
-			prop_dynamic = true,
-			g64_physbox = true,
-			g64_mario = true
+		local pickUpWhitelist = {
+			prop_physics = true
 		}
 		local function PerformGroundAttacks()
 			if self:MarioIsAttacking() then
@@ -852,7 +849,7 @@ if CLIENT then
 						end
 					else
 						local volume = 1000000
-						if self.pickupMode == true and not pickUpBlacklist[tr.Entity:GetClass()] then
+						if self.pickupMode == true and pickUpWhitelist[tr.Entity:GetClass()] then
 							tr.Entity:PhysicsInit(6)
 							local phys = tr.Entity:GetPhysicsObject()
 							if phys:IsValid() == false then
