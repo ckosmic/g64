@@ -300,7 +300,8 @@ hook.Add("OnEntityCreated", "G64_SV_ON_ENT_CREATED", function(ent)
 end)
 
 local markedForDeletion = {}
-hook.Add("Tick", "G64_SV_TICK", function()
+timer.Remove("G64_SOLIDITY_CHECK")
+timer.Create("G64_SOLIDITY_CHECK", 1, 0, function()
 	table.Empty(markedForDeletion)
 	for k,v in ipairs(allEnts) do
 		if IsValid(v) == false then
