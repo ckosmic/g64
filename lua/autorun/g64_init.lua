@@ -17,14 +17,15 @@ REQUIRED_MODULE = 2
 
 if CLIENT then
 
-	include("includes/g64_config.lua")
-
-	local initWorldCalled = false
-
 	local moduleName = "gmcl_g64_win64.dll"
+	local updaterName = "gmcl_g64_updater_win64.dll"
 	--if(jit.arch == "x86") then
 	--	moduleName = "gmcl_g64_win32.dll"
 	--end
+
+	include("includes/g64_config.lua")
+
+	local initWorldCalled = false
 
 	local function LoadFailure()
 		libsm64.ModuleExists = false
@@ -326,8 +327,37 @@ if CLIENT then
 			chat.AddText(Color(255, 100, 100), "[G64] You are on 32-bit Garry's Mod. G64 only works in 64-bit mode. Follow the instructions here to switch to 64-bit: ", Color(86, 173, 255), "https://github.com/ckosmic/g64#installation\n")
 			return
 		end
+
+		if GetConVar("g64_auto_update"):GetBool() == true then
+			local updaterResult = -1
+			if file.Exists("lua/bin/" .. updaterName, "MOD") then
+				require("g64_updater")
+				local currentVersion = GetConVar("g64_lib_version"):GetString()
+				if currentVersion == "" or file.Exists("lua/bin/" .. moduleName, "MOD") == false then
+					// Force download if there is no module available
+					currentVersion = "0.0.0"
+				end
+				
+				// 0 = Up to date
+				// 1 = Successfully updated
+				// > 1 = Error updating
+				updaterResult = g64updater.UpdateG64From(currentVersion)
+			else
+				print("[G64] Failed to check for updates: Updater module is missing.")
+			end
+
+			if updaterResult > 1 then 
+				libsm64 = {}
+				LoadFailure()
+				chat.AddText(Color(255, 100, 100), "[G64] Failed to update G64's library package. Check the console for more info.")
+				return
+			end
+		end
+
 		if file.Exists("lua/bin/" .. moduleName, "MOD") then
 			require("g64")
+
+			GetConVar("g64_lib_version"):SetString(libsm64.GetPackageVersion())
 
 			if libsm64.GetPackageVersion == nil then
 				-- Pre-auto-updater check

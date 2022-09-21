@@ -60,6 +60,51 @@ function ENT:SpawnFunction(ply, tr, ClassName)
 	return ent
 end
 
+local function CheckVersionStatus()
+	-- Check if the binary module or libsm64 are outdated, chat to player once if so
+	if libsm64.OutdatedNotified == nil and libsm64.GetModuleVersion ~= nil then
+		libsm64.ModuleVersion = libsm64.GetModuleVersion()
+		libsm64.LibSM64Version = libsm64.GetLibVersion()
+
+		if libsm64.ModuleOutdated == true or libsm64.LibSM64Outdated == true then
+			chat.AddText(Color(255, 100, 100), "[G64] Your G64 library package is outdated! Please install the latest version from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest", Color(255, 100, 100), " or turn on auto updates.\n")
+			libsm64.OutdatedNotified = true
+			if not game.SinglePlayer() then
+				hook.Remove("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex())
+				self:RemoveFromClient()
+				return 1
+			end
+		end
+	end
+
+	-- Prevent Mario from spawning in multiplayer if anything is outdated
+	if not game.SinglePlayer() and (libsm64.ModuleOutdated == true or libsm64.LibSM64Outdated == true or libsm64.GetModuleVersion == nil or libsm64.PackageOutdated == true) then
+		if libsm64.GetModuleVersion == nil then
+			if libsm64.PackageOutdated == true then
+				hook.Remove("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex())
+				self:RemoveFromClient()
+				chat.AddText(Color(255, 100, 100), "[G64] Your G64 library package is outdated! Please install the latest version from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest", Color(255, 100, 100), " or turn on auto updates.\n")
+				return 1
+			end
+		else
+			hook.Remove("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex())
+			self:RemoveFromClient()
+			chat.AddText(Color(255, 100, 100), "[G64] Your G64 library package is outdated! Please install the latest version from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest", Color(255, 100, 100), " or turn on auto updates.\n")
+			return 1
+		end
+	end
+
+	-- Prevent Mario from spawning if the binary module doesn't exist
+	if not libsm64.ModuleExists then
+		hook.Remove("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex())
+		self:RemoveFromClient()
+		chat.AddText(Color(255, 100, 100), "[G64] Couldn't locate the gmcl_g64_win64 binary module!\nPlease place it in ", Color(100, 255, 100), "garrysmod/lua/bin", Color(255, 100, 100), " and reconnect.")
+		return 1
+	end
+
+	return 0
+end
+
 function ENT:Initialize()
 	self:DrawShadow(true)
 	self:SetRenderMode(RENDERMODE_NORMAL)
@@ -91,65 +136,10 @@ function ENT:Initialize()
 		hook.Add("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex(), function()
 			if libsm64 == nil or IsValid(self) == false or self.Owner == nil or IsValid(self.Owner) == false then return end
 
-			-- Check if the binary module or libsm64 are outdated, chat to player once if so
-			if libsm64.OutdatedNotified == nil and libsm64.GetModuleVersion ~= nil then
-				libsm64.ModuleVersion = libsm64.GetModuleVersion()
-				libsm64.LibSM64Version = libsm64.GetLibVersion()
-				local libreq = libsm64.CheckLibRequirement()
+			// Ensure the library package is up to date or else everything will error out
+			// since the workshop addon would be out of sync with the binary files
+			if CheckVersionStatus() == 1 then return end
 
-				if libsm64.ModuleOutdated == true and libsm64.LibSM64Outdated == true then
-					chat.AddText(Color(255, 100, 100), "[G64] Your G64 binary module and libsm64 versions are outdated! Please download the latest versions of both from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
-					libsm64.OutdatedNotified = true
-					if not game.SinglePlayer() then
-						hook.Remove("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex())
-						self:RemoveFromClient()
-						return
-					end
-				elseif libsm64.ModuleOutdated == true then
-					chat.AddText(Color(255, 100, 100), "[G64] Your version of the G64 binary module is outdated! Please download the latest version of the G64 binary module from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
-					libsm64.OutdatedNotified = true
-					if not game.SinglePlayer() then
-						hook.Remove("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex())
-						self:RemoveFromClient()
-						return
-					end
-				elseif libsm64.LibSM64Outdated == true then
-					chat.AddText(Color(255, 100, 100), "[G64] Your version of libsm64 is outdated! Please download the latest version of libsm64 from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
-					libsm64.OutdatedNotified = true
-					if not game.SinglePlayer() then
-						hook.Remove("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex())
-						self:RemoveFromClient()
-						return
-					end
-				end
-			end
-
-			-- Prevent Mario from spawning in multiplayer if anything is outdated
-			if not game.SinglePlayer() and (libsm64.ModuleOutdated == true or libsm64.LibSM64Outdated == true or libsm64.GetModuleVersion == nil or libsm64.PackageOutdated == true) then
-				if libsm64.GetModuleVersion == nil then
-					if libsm64.PackageOutdated == true then
-						hook.Remove("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex())
-						self:RemoveFromClient()
-						if GetConVar("g64_auto_update"):GetBool() then
-							chat.AddText(Color(255, 100, 100), "[G64] Your libsm64-g64 package is outdated! Please reconnect to auto-download the newest version.\n")
-						else
-							chat.AddText(Color(255, 100, 100), "[G64] Your libsm64-g64 package is outdated! Please download the latest version from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest", Color(255, 100, 100), " or turn auto-updates on in the G64 settings menu.\n")
-						end
-						return
-					end
-				else
-					hook.Remove("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex())
-					self:RemoveFromClient()
-					chat.AddText(Color(255, 100, 100), "[G64] Your version of libsm64 or the G64 binary module is outdated! Please download the latest version from ", Color(86, 173, 255), "https://github.com/ckosmic/g64/releases/latest\n")
-					return
-				end
-			end
-
-			if not libsm64.ModuleExists then
-				chat.AddText(Color(255, 100, 100), "[G64] Couldn't locate the libsm64-gmod binary module!\nPlease place it in ", Color(100, 255, 100), "garrysmod/lua/bin", Color(255, 100, 100), " and reconnect.")
-				hook.Remove("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex())
-				self:RemoveFromClient()
-			end
 			if libsm64.ModuleLoaded == true and libsm64.MapLoaded == true then
 				hook.Remove("Think", "G64_WAIT_FOR_MODULE" .. self:EntIndex())
 				
