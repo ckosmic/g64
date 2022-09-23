@@ -207,3 +207,10 @@ hook.Add("G64GameTick", "G64_HUD_TICK", function()
 
     sPowerMeterVisibleTimer = sPowerMeterVisibleTimer + 1
 end)
+
+hook.Add("OnScreenSizeChanged", "G64_SCREEN_SIZE_CHANGED_HUD", function(ow, oh)
+    SCREEN_WIDTH = ScrW()
+    SCREEN_HEIGHT = ScrH()
+    ASPECT_RATIO = SCREEN_WIDTH / SCREEN_HEIGHT
+    sPowerMeterHUD.x = ScrW()/2-32*UI_SCALE
+end)

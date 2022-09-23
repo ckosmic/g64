@@ -136,6 +136,11 @@ if CLIENT then
     hook.Add("FinishChat", "G64_ON_CHAT_CLOSE", function()
         g64utils.IsChatOpen = false
     end)
+    hook.Add("OnScreenSizeChanged", "G64_SCREEN_SIZE_CHANGED", function(ow, oh)
+        timer.Create("G64_DELAY_RELOAD_TEX", 0, 1, function()
+            g64utils.LoadTextures()
+        end)
+    end)
     --hook.Add("HUDPaint", "G64_PDPFDPFPDF", function()
     --    local rt = g64utils.ParticleRT
     --    render.DrawTextureToScreenRect(rt, 0, 0, rt:Width(), rt:Height())
@@ -274,6 +279,8 @@ if CLIENT then
     end
 
     g64utils.CreateTexture = function(textureData, rt, content_width)
+        if textureData == nil then return end
+
 		local TEX_WIDTH = rt:Width()
 		local TEX_HEIGHT = rt:Height()
 		local CONTENT_WIDTH = content_width
@@ -305,6 +312,26 @@ if CLIENT then
         net.SendToServer()
     end
 
+    g64utils.GlobalTextureData = {
+        Mario = nil,
+        Coin = nil,
+        UI = nil,
+        Health = nil,
+        Particle = nil
+    }
+
+    g64utils.LoadTextures = function()
+        g64utils.CreateTexture(g64utils.GlobalTextureData.Mario, g64utils.MarioRT, 704)
+        g64utils.CreateTexture(g64utils.GlobalTextureData.Coin, g64utils.CoinRT, 128)
+        g64utils.CreateTexture(g64utils.GlobalTextureData.UI, g64utils.UIRT, 224)
+        g64utils.CreateTexture(g64utils.GlobalTextureData.Health, g64utils.HealthRT, 704)
+        g64utils.CreateTexture(g64utils.GlobalTextureData.Particle, g64utils.ParticleRT, 32)
+        
+        local matrix = Matrix()
+        matrix:Scale(Vector(0.125, 1, 1))
+        g64utils.BubbleMat:SetMatrix("$basetexturetransform", matrix)
+    end
+
     g64utils.GlobalInit = function()
         local romPath = GetConVar("g64_rompath"):GetString()
         if romPath == nil or romPath == "" then
@@ -313,23 +340,16 @@ if CLIENT then
         end
 
         if not libsm64.IsGlobalInit() then
-            local textureData, 
-            coinTextureData, 
-            uiTextureData, 
-            healthTextureData,
-            particleTextureData = libsm64.GlobalInit(romPath)
-            if textureData == false then
+            g64utils.GlobalTextureData.Mario,
+            g64utils.GlobalTextureData.Coin,
+            g64utils.GlobalTextureData.UI,
+            g64utils.GlobalTextureData.Health,
+            g64utils.GlobalTextureData.Particle = libsm64.GlobalInit(romPath)
+            if g64utils.GlobalTextureData.Mario == false then
                 chat.AddText(Color(255, 100, 100), "[G64] Error loading ROM at `", romPath, "`. Please check if the file exists.")
                 return false
             else
-                g64utils.CreateTexture(textureData, g64utils.MarioRT, 704)
-                g64utils.CreateTexture(coinTextureData, g64utils.CoinRT, 128)
-                g64utils.CreateTexture(uiTextureData, g64utils.UIRT, 224)
-                g64utils.CreateTexture(healthTextureData, g64utils.HealthRT, 704)
-                g64utils.CreateTexture(particleTextureData, g64utils.ParticleRT, 32)
-                local matrix = Matrix()
-                matrix:Scale(Vector(0.125, 1, 1))
-                g64utils.BubbleMat:SetMatrix("$basetexturetransform", matrix)
+                g64utils.LoadTextures()
                 return true
             end
         end
