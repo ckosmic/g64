@@ -32,9 +32,11 @@ function ENT:Think()
             self:SetPos(self.Mario:GetPos())
         end
 
-        if self.PhysicsObject:IsValid() then
+        if self.PhysicsObject and self.PhysicsObject:IsValid() then
             self.PhysicsObject:SetVelocityInstantaneous(Vector())
             self.PhysicsObject:SetAngleVelocity(Vector())
+        else
+            self.PhysicsObject = self:GetPhysicsObject()
         end
     else
         if not IsValid(self.Mario) then
