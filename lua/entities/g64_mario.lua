@@ -333,9 +333,9 @@ if CLIENT then
 	end
 
 	function ENT:MarioIsAttacking()
-		if g64utils.MarioHasFlag(self.marioFlags, 0x00100000) or 
-		   g64utils.MarioHasFlag(self.marioFlags, 0x00200000) or
-		   g64utils.MarioHasFlag(self.marioFlags, 0x00400000) or 
+		if g64utils.MarioHasFlag(self.marioFlags, g64types.MARIO_PUNCHING) or 
+		   g64utils.MarioHasFlag(self.marioFlags, g64types.MARIO_KICKING) or
+		   g64utils.MarioHasFlag(self.marioFlags, g64types.MARIO_TRIPPING) or 
 		   self.marioAction == g64types.SM64MarioAction.ACT_DIVE or
 		   self.marioAction == g64types.SM64MarioAction.ACT_DIVE_SLIDE or
 		   self.marioAction == g64types.SM64MarioAction.ACT_SLIDE_KICK or
@@ -839,7 +839,11 @@ if CLIENT then
 						end
 					else
 						local volume = 1000000
-						if self.pickupMode == true and pickUpWhitelist[tr.Entity:GetClass()] then
+						if self.pickupMode == true and pickUpWhitelist[tr.Entity:GetClass()] and
+							g64utils.MarioHasFlag(self.marioFlags, g64types.MARIO_KICKING) == false and
+							g64utils.MarioHasFlag(self.marioFlags, g64types.MARIO_TRIPPING) == false and
+							self.marioAction ~= g64types.SM64MarioAction.ACT_SLIDE_KICK and
+		   					self.marioAction ~= g64types.SM64MarioAction.ACT_SLIDE_KICK_SLIDE then
 							tr.Entity:PhysicsInit(6)
 							local phys = tr.Entity:GetPhysicsObject()
 							if phys:IsValid() == false then

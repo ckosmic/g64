@@ -4,6 +4,7 @@ g64types = {}
 
 g64types.MARIO_PUNCHING = 0x00100000
 g64types.MARIO_KICKING = 0x00200000
+g64types.MARIO_TRIPPING = 0x00400000
 
 g64types.DefaultMarioColors = {
 	{0  , 0  , 255},							   -- Overalls
