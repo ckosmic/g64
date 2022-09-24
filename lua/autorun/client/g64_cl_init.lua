@@ -446,7 +446,11 @@ concommand.Add("g64_init", function(ply, cmd, args)
 	libsm64.GlobalInit()
 end)
 concommand.Add("g64_terminate", function(ply, cmd, args)
-	print(libsm64.GlobalTerminate())
+	if ply.IsMario == false then
+		print(libsm64.GlobalTerminate())
+	else
+		print("Please leave Mario mode before running g64_terminate.")
+	end
 end)
 concommand.Add("g64_isinit", function(ply, cmd, args)
 	print(libsm64.IsGlobalInit())
