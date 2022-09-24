@@ -411,6 +411,7 @@ if CLIENT then
 		self.pickupMode = false
 		self.dropMethod = -1
 		self.bubbleEmitter = ParticleEmitter(self:GetPos())
+		self.camDistance = 500
 		self.view = {
 			origin = Vector(),
 			angles = Angle(),
@@ -1011,7 +1012,7 @@ if CLIENT then
 			entFilter[2] = ply
 			entFilter[3] = self.PhysBox
 
-			CalcView_ThirdPerson(self.view, 500, 4, ply, entFilter)
+			CalcView_ThirdPerson(self.view, GetConVar("g64_cam_distance"):GetInt(), 4, ply, entFilter)
 			return self.view
 		end
 
@@ -1239,6 +1240,7 @@ if CLIENT then
 			self.marioNumLives = marioState[10]
 			self.holdingObject = marioState[11]
 			self.dropMethod = marioState[12]
+			self.camDistance = GetConVar("g64_cam_distance"):GetInt()
 
 			if self.marioHealth > 0 then
 				lPlayer.LivesCount = self.marioNumLives
@@ -1274,6 +1276,12 @@ if CLIENT then
 			net.SendToServer()
 
 			self.Owner:SetNoDraw(true)
+
+			if self.camDistance == 0 and lPlayer:InVehicle() == false then
+				self:SetNoDraw(true)
+			else
+				self:SetNoDraw(false)
+			end
 		end
 
 		local upVec = Vector(0,0,10000)
@@ -1372,7 +1380,7 @@ if CLIENT then
 				self:RemoveFromClient()
 			end
 
-			if not gui.IsGameUIVisible() or not game.SinglePlayer() then
+			if (not gui.IsGameUIVisible() or not game.SinglePlayer()) and (self.camDistance > 0 or lPlayer:InVehicle() == true) then
 				self:GenerateMesh()
 			end
 
@@ -1474,6 +1482,7 @@ if CLIENT then
 		end)
 		
 		-- From drive_base.lua
+		local fpHeight = 25
 		CalcView_ThirdPerson = function( view, dist, hullsize, ply, entityfilter )
 			if IsValid(self.cameraOverride) then
 				if IsValid(self.cameraOverride:GetentTrack()) then
@@ -1483,6 +1492,15 @@ if CLIENT then
 				end
 				view.origin	= self.cameraOverride:GetPos()
 				return
+			end
+
+			if self.camDistance == 0 then
+				if bit.band(self.marioAction, 0x00008000) == 0 then
+					fpHeight = Lerp(FrameTime() * 30, fpHeight, 25)
+				else
+					fpHeight = Lerp(FrameTime() * 30, fpHeight, 6)
+				end
+				view.origin.z = view.origin.z + fpHeight * (2.5 / libsm64.ScaleFactor)
 			end
 
 			local newdist = dist / libsm64.ScaleFactor
@@ -1523,6 +1541,15 @@ if CLIENT then
 			local x = libsm64.GetGamepadAxis("rAxisX")
 			local y = libsm64.GetGamepadAxis("rAxisY")
 			cmd:SetViewAngles(ang + Angle(y, -x, 0) * (GetConVar("g64_gp_sensitivity"):GetFloat()/100))
+
+			if cmd:GetMouseWheel() ~= 0 then
+				local scrollSensitivity = 10
+				local prevDist = GetConVar("g64_cam_distance"):GetInt()
+				local newDist = prevDist - cmd:GetMouseWheel() * scrollSensitivity
+				if newDist < 0 then newDist = 0 end
+				if newDist > 3000 then newDist = 3000 end
+				GetConVar("g64_cam_distance"):SetInt(newDist)
+			end
 		end)
 
 		hook.Add("CreateMove", "G64_CREATEMOVE" .. self.MarioId, function(cmd)

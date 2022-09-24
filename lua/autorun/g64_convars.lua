@@ -22,6 +22,7 @@ if CLIENT then
     CreateClientConVar("g64_disable_cache", "0", true, false)
 	CreateClientConVar("g64_hud_scale", "4", true, false)
 	CreateClientConVar("g64_hud_enable", "1", true, false)
+	CreateClientConVar("g64_cam_distance", "500", true, false)
 
 	CreateClientConVar("g64_forward", KEY_W, true)
 	CreateClientConVar("g64_back", KEY_S, true)
