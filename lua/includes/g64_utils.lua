@@ -101,6 +101,16 @@ if CLIENT then
         ["$alpha"] = "1"
     })
 
+    systimetimers.Create("G64_CHECK_FOR_CLEARED_RTS", 1, 0, function()
+        render.PushRenderTarget(g64utils.MarioRT)
+        render.CapturePixels()
+        local r, g, b = render.ReadPixel(44,8)
+        render.PopRenderTarget()
+        if r == 0 then
+            g64utils.LoadTextures()
+        end
+    end)
+
     hook.Add("PostDrawOpaqueRenderables", "G64_COPY_FRAMEBUFFER", function(bDrawingDepth, bDrawingSkybox, isDraw3DSkybox)
         render.SetWriteDepthToDestAlpha(false)
         render.CopyRenderTargetToTexture(g64utils.FramebufferRT) -- Used for vanish cap translucency
@@ -137,12 +147,10 @@ if CLIENT then
         g64utils.IsChatOpen = false
     end)
     hook.Add("OnScreenSizeChanged", "G64_SCREEN_SIZE_CHANGED", function(ow, oh)
-        timer.Create("G64_DELAY_RELOAD_TEX", 0, 1, function()
-            g64utils.LoadTextures()
-        end)
+        timer.Create("G64_DELAY_RELOAD_TEX", 0, 1, g64utils.LoadTextures)
     end)
     --hook.Add("HUDPaint", "G64_PDPFDPFPDF", function()
-    --    local rt = g64utils.ParticleRT
+    --    local rt = g64utils.MarioRT
     --    render.DrawTextureToScreenRect(rt, 0, 0, rt:Width(), rt:Height())
     --end)
 
