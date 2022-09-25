@@ -1277,7 +1277,7 @@ if CLIENT then
 
 			self.Owner:SetNoDraw(true)
 
-			if self.camDistance == 0 and lPlayer:InVehicle() == false then
+			if self.camDistance == 0 and lPlayer:InVehicle() == false and IsValid(self.cameraOverride) == false then
 				self:SetNoDraw(true)
 			else
 				self:SetNoDraw(false)
@@ -1380,7 +1380,7 @@ if CLIENT then
 				self:RemoveFromClient()
 			end
 
-			if (not gui.IsGameUIVisible() or not game.SinglePlayer()) and (self.camDistance > 0 or lPlayer:InVehicle() == true) then
+			if (not gui.IsGameUIVisible() or not game.SinglePlayer()) and (self.camDistance > 0 or IsValid(self.cameraOverride) or lPlayer:InVehicle() == true) then
 				self:GenerateMesh()
 			end
 
@@ -1492,9 +1492,7 @@ if CLIENT then
 				end
 				view.origin	= self.cameraOverride:GetPos()
 				return
-			end
-
-			if self.camDistance == 0 then
+			elseif self.camDistance == 0 then
 				if bit.band(self.marioAction, 0x00008000) == 0 then
 					fpHeight = Lerp(FrameTime() * 30, fpHeight, 25)
 				else
