@@ -483,7 +483,7 @@ if CLIENT then
 					mesh.Position(posTab[i])
 					mesh.Normal(normTab[i])
 				end
-				mesh.TexCoord(0, uTab[i]+uvOffset, vTab[i]+uvOffset)
+				mesh.TexCoord(0, (uTab[i]+0.002)*0.995, vTab[i])
 				mesh.Color(col[1], col[2], col[3], 255)
 				mesh.AdvanceVertex()
 			end

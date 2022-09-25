@@ -149,10 +149,10 @@ if CLIENT then
     hook.Add("OnScreenSizeChanged", "G64_SCREEN_SIZE_CHANGED", function(ow, oh)
         timer.Create("G64_DELAY_RELOAD_TEX", 0, 1, g64utils.LoadTextures)
     end)
-    --hook.Add("HUDPaint", "G64_PDPFDPFPDF", function()
-    --    local rt = g64utils.MarioRT
-    --    render.DrawTextureToScreenRect(rt, 0, 0, rt:Width(), rt:Height())
-    --end)
+    hook.Add("HUDPaint", "G64_PDPFDPFPDF", function()
+        local rt = g64utils.MarioRT
+        render.DrawTextureToScreenRect(rt, 0, 0, rt:Width(), rt:Height())
+    end)
 
     g64utils.Inputs = {}
     g64utils.Inputs[1] = Vector()
