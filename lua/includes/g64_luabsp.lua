@@ -752,6 +752,7 @@ do
                         
                     local pointStartIndex = -1
                     local face = worldFaces[dispinfo.mapFace]
+                    if not face then break end
                     if(face.numedges <= 4) then
                         local pointStart = dispinfo.startPosition
                     
