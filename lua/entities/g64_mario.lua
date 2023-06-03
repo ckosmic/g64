@@ -858,9 +858,7 @@ if CLIENT then
 							net.SendToServer()
 						end
 					-- Need this here because we need the check for the else case
-					elseif self.pickupMode == true then
-					-- Doing this full check here
-						if pickUpWhitelist[tr.Entity:GetClass()] and
+					elseif self.pickupMode == true and pickUpWhitelist[tr.Entity:GetClass()] and
 								g64utils.MarioHasFlag(self.marioFlags, g64types.MARIO_KICKING) == false and
 								g64utils.MarioHasFlag(self.marioFlags, g64types.MARIO_TRIPPING) == false and
 								self.marioAction ~= g64types.SM64MarioAction.ACT_SLIDE_KICK and
@@ -871,16 +869,18 @@ if CLIENT then
 								net.WriteVector(self.marioForward)
 								net.WriteVector(tr.HitPos)
 							net.SendToServer()
-						else
-							net.Start("G64_DAMAGEENTITY")
-								net.WriteEntity(self)
-								net.WriteEntity(tr.Entity)
-								net.WriteVector(self.marioForward)
-								net.WriteVector(tr.HitPos)
-								net.WriteUInt(15, 8)
-							net.SendToServer()
-						end
 						self.pickupMode = false
+					else
+						tr.Entity.HitStunTimer = 0.25
+						local soundArg = GetSoundArg(g64types.SM64SoundTable.SOUND_ACTION_HIT)
+						libsm64.PlaySoundGlobal(soundArg)
+						net.Start("G64_DAMAGEENTITY")
+							net.WriteEntity(self)
+							net.WriteEntity(tr.Entity)
+							net.WriteVector(self.marioForward)
+							net.WriteVector(tr.HitPos)
+							net.WriteUInt(15, 8)
+						net.SendToServer()
 					end
 				end
 			end
