@@ -513,7 +513,6 @@ local function GrabRequestReply(_, ply)
 			net.WriteEntity(entity)
 		net.Send(ply)
 	else
-		print("Failed grab, damaging")
 		damageEntity(mario, entity, forceVec, hitPos, 15, ply)
 		net.Start("G64_GRABREQUEST", true)
 			net.WriteBool(false)
