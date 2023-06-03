@@ -807,6 +807,25 @@ if CLIENT then
 		local pickUpWhitelist = {
 			prop_physics = true
 		}
+		
+		local function GrabRequestReply()
+			if net.ReadBool() then
+				local entity = net.ReadEntity()
+				-- If somehow these important things changed in between net messages
+				if pickUpWhitelist[entity:GetClass()] and self.holdingObject == false and IsValid(self.heldObject) == false then 
+					libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_PICKING_UP)
+					self.heldObject = entity
+					self.waitForHold = true
+				end
+			else
+				net.ReadEntity().HitStunTimer = 0.25
+				local soundArg = GetSoundArg(g64types.SM64SoundTable.SOUND_ACTION_HIT)
+				libsm64.PlaySoundGlobal(soundArg)
+			end
+			self.pickupMode = false
+		end
+		net.Receive("G64_GRABREQUEST", GrabRequestReply)
+		
 		local function PerformGroundAttacks()
 			if self:MarioIsAttacking() then
 				local tr = util.TraceHull({
@@ -838,35 +857,21 @@ if CLIENT then
 								net.WriteUInt(dmg, 8)
 							net.SendToServer()
 						end
-					else
-						local volume = 1000000
-						if self.pickupMode == true and pickUpWhitelist[tr.Entity:GetClass()] and
-							g64utils.MarioHasFlag(self.marioFlags, g64types.MARIO_KICKING) == false and
-							g64utils.MarioHasFlag(self.marioFlags, g64types.MARIO_TRIPPING) == false and
-							self.marioAction ~= g64types.SM64MarioAction.ACT_SLIDE_KICK and
-		   					self.marioAction ~= g64types.SM64MarioAction.ACT_SLIDE_KICK_SLIDE then
-							tr.Entity:PhysicsInit(6)
-							local phys = tr.Entity:GetPhysicsObject()
-							if phys:IsValid() == false then
-								tr.Entity:PhysicsDestroy()
-							else
-								volume = phys:GetVolume()
-							end
-							tr.Entity:PhysicsDestroy()
-							self.pickupMode = false
-						end
-
-						--print(volume)
-						if volume < 65000 then
-							if self.holdingObject == false and IsValid(self.heldObject) == false then
-								libsm64.SetMarioAction(self.MarioId, g64types.SM64MarioAction.ACT_PICKING_UP)
-								self.heldObject = tr.Entity
-								self.waitForHold = true
-							end
+					-- Need this here because we need the check for the else case
+					elseif self.pickupMode == true then
+					-- Doing this full check here
+						if pickUpWhitelist[tr.Entity:GetClass()] and
+								g64utils.MarioHasFlag(self.marioFlags, g64types.MARIO_KICKING) == false and
+								g64utils.MarioHasFlag(self.marioFlags, g64types.MARIO_TRIPPING) == false and
+								self.marioAction ~= g64types.SM64MarioAction.ACT_SLIDE_KICK and
+								self.marioAction ~= g64types.SM64MarioAction.ACT_SLIDE_KICK_SLIDE and
+								self.holdingObject == false and IsValid(self.heldObject) == false then
+							net.Start("G64_GRABREQUEST", true)
+								net.WriteEntity(tr.Entity)
+								net.WriteVector(self.marioForward)
+								net.WriteVector(tr.HitPos)
+							net.SendToServer()
 						else
-							tr.Entity.HitStunTimer = 0.25
-							local soundArg = GetSoundArg(g64types.SM64SoundTable.SOUND_ACTION_HIT)
-							libsm64.PlaySoundGlobal(soundArg)
 							net.Start("G64_DAMAGEENTITY")
 								net.WriteEntity(self)
 								net.WriteEntity(tr.Entity)
@@ -875,6 +880,7 @@ if CLIENT then
 								net.WriteUInt(15, 8)
 							net.SendToServer()
 						end
+						self.pickupMode = false
 					end
 				end
 			end

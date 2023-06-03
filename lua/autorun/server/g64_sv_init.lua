@@ -352,14 +352,9 @@ net.Receive("G64_UPLOADCOLORS", function(len, ply)
 	end
 end)
 
-net.Receive("G64_DAMAGEENTITY", function(len, ply)
-	local mario = net.ReadEntity()
-	local victim = net.ReadEntity()
-	local forceVec = net.ReadVector()
-	local hitPos = net.ReadVector()
-	local minDmg = net.ReadUInt(8)
-
-	if not IsValid(victim) or !IsValid(mario) then return end
+local function damageEntity(mario, victim, forceVec, hitPos, minDmg, ply)
+	--print(mario, victim, forceVec, hitpos, minDmg, ply)
+	if not IsValid(victim) or not IsValid(mario) then return end
 	local victimHealth = victim:Health()
 	if victim:IsNPC() or victim:IsPlayer() or victimHealth > 0 then
 		local d = DamageInfo()
@@ -394,11 +389,34 @@ net.Receive("G64_DAMAGEENTITY", function(len, ply)
 		local phys = victim:GetPhysicsObject()
 		
 		phys:ApplyForceOffset(forceVec * 7800, hitPos)
+		
+		-- Allow damage taking for things like damage detectors
+		if victim.TakeDamageInfo ~= nil then
+			local d = DamageInfo()
+			local damage = math.random(minDmg, minDmg+10)
+			d:SetDamage(damage)
+			d:SetAttacker(mario)
+			d:SetInflictor(mario)
+			d:SetDamageType(DMG_GENERIC)
+			d:SetDamageForce(forceVec * 15000)
+			d:SetDamagePosition(hitPos)
+			
+			victim:TakeDamageInfo(d)
+		end
 	end
 	
 	if ply:GetUseEntity() ~= NULL then
-		ply:GetUseEntity():Use(mario, mario, USE_ON)
+		ply:GetUseEntity():Use(ply, mario, USE_ON)
 	end
+end
+
+net.Receive("G64_DAMAGEENTITY", function(len, ply)
+	local mario = net.ReadEntity()
+	local victim = net.ReadEntity()
+	local forceVec = net.ReadVector()
+	local hitPos = net.ReadVector()
+	local minDmg = net.ReadUInt(8)
+	damageEntity(mario, victim, forceVec, hitPos, minDmg, ply)
 end)
 
 net.Receive("G64_REMOVEINVALIDMARIO", function(len, ply)
@@ -476,6 +494,34 @@ net.Receive("G64_UPDATEHELDOBJECT", function(len, ply)
 		end
 	end
 end)
+
+local function GrabRequestReply(_, ply)
+	local mario = ply.MarioEnt
+	local entity = net.ReadEntity()
+	local forceVec = net.ReadVector()
+	local hitPos = net.ReadVector()
+	local volume = 1000000
+	local phys = entity:GetPhysicsObject()
+	
+	if phys:IsValid() and phys:IsMotionEnabled() and phys:IsMoveable() then -- if not frozen
+		volume = phys:GetVolume()
+	end
+
+	if volume < 65000 then
+		net.Start("G64_GRABREQUEST")
+			net.WriteBool(true)
+			net.WriteEntity(entity)
+		net.Send(ply)
+	else
+		print("Failed grab, damaging")
+		damageEntity(mario, entity, forceVec, hitPos, 15, ply)
+		net.Start("G64_GRABREQUEST", true)
+			net.WriteBool(false)
+			net.WriteEntity(entity)
+		net.Send(ply)
+	end
+end
+net.Receive("G64_GRABREQUEST", GrabRequestReply)
 
 local meta = FindMetaTable("Player")
 
