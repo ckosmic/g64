@@ -1503,7 +1503,7 @@ if CLIENT then
 
 			local newdist = dist / libsm64.ScaleFactor
 			local neworigin = view.origin - ply:EyeAngles():Forward() * newdist
-			local newmask = MASK_SOLID
+			local newmask = MASK_OPAQUE_AND_NPCS
 			if self.hasVanishCap == true then newmask = MASK_PLAYERSOLID_BRUSHONLY end
 			if self.marioAction == g64types.SM64MarioAction.ACT_DEBUG_FREE_MOVE then newmask = MASK_CURRENT end
 
