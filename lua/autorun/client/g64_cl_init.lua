@@ -283,15 +283,16 @@ hook.Add("G64Initialized", "G64_ENTITY_GEO", function()
 				end
 				
 				local mario = LocalPlayer().MarioEnt
+				local marioIsValid = IsValid(mario)
 				for j,surfaceId in pairs(surfaceIds[k]) do
 					--if v:GetSolidFlags() ~= 256 then print(v, v:GetSolidFlags()) end
 					if v:GetCollisionGroup() == COLLISION_GROUP_WORLD or 
 					   v.DontCollideWithMario == true or 
 					   v == LocalPlayer():GetVehicle() or 
-					   (IsValid(mario) and mario.hasVanishCap == true) or
+					   (marioIsValid and v.G64SurfaceType == 123 and mario.hasVanishCap) or
 					   v:IsSolid() == false or
 					   v:GetNWInt("Solidity") == 0 or
-					   (IsValid(mario) and mario.heldObj == v) then
+					   (marioIsValid and mario.heldObj == v) then
 
 						libsm64.SurfaceObjectMove(surfaceId, noCollidePos, v:GetAngles())
 					else
